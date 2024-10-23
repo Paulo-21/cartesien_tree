@@ -23,7 +23,7 @@ impl CartesienTree {
                 node.push();
             },
             None => {
-                self.root = Some(Node {});
+                self.root = Some(Box::new(Node {key, priority, left_child:None, right_child:None}));
             }
         }
     }
