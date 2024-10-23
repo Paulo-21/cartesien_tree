@@ -2,6 +2,5 @@
 mod tree;
 use tree::*;
 fn main() {
-    let tree = CartesienTree::new();
-    
+    let _tree = CartesienTree::new();
 }
