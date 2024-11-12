@@ -1,4 +1,6 @@
-enum Direction {
+use std::{cell::RefCell, rc::Rc};
+
+enum Direction { 
     Right, Left
 }
 
@@ -6,86 +8,94 @@ enum Direction {
 struct Node {
     key : u32,
     priority : u32,
-    left_child : Option<Box<Node>>,
-    right_child : Option<Box<Node>>,
-    parent : Option<Box<Node>>,
+    left_child : Option<Rc<RefCell<Node>>>,
+    right_child : Option<Rc<RefCell<Node>>>,
+    parent : Option<Rc<RefCell<Node>>>,
 }
 impl Node {
     pub fn new(key : u32, priority : u32) -> Self {
         Self{ key, priority, left_child: None, right_child: None, parent:None }
     }
-    fn is_parent_of(&self, node : Box<Node>) -> (bool, Direction) {
-        if let Some(n) = &self.right_child {
-            if n.key == node.key && n.priority == node.priority {
-                return (true, Direction::Right);
-            }
-        }
-        if let Some(n) = &self.left_child {
-            if n.key == node.key && n.priority == node.priority {
-                return (true, Direction::Left);
-            }
-        }
-        (false, Direction::Right)
+    pub fn newp(key : u32, priority : u32, parent : Rc<RefCell<Node>>) -> Self {
+        Self{ key, priority, left_child: None, right_child: None, parent:Some(parent) }
     }
 }
 pub struct CartesienTree {
-    root : Option<Box<Node>>,
+    root : Option<Rc<RefCell<Node>>>,
 }
 impl CartesienTree {
     pub fn new() -> Self {
         return Self{root : None};
     }
-    fn rotate_tree(mut parent : Box<Node> , new: Box<Node>) {
-        let new_p = new.priority;
+    pub fn insert(&mut self, key : u32, priority : u32) {
+        if self.is_empty() { self.root = Some(Rc::new(RefCell::new(Node::new(key, priority)))); return; }
+        let mut current_node = self.root.clone();
+        let mut insert_direction = Direction::Left;//by default
         loop {
-            if parent.priority >=  new_p {
-                break;
-            }
-            let (b, dir) = parent.is_parent_of(new.clone());
-        }
-    }
-    pub fn insert(&mut self, key : u32, priority : u32) { // Pas fini
-        if self.is_empty() { return; }
-        let mut current_node = self.root;
-        loop {
-            match current_node {
-                Some(n) => {
-                    if key == n.key { return; }
-                    let cur = 
-                    if key < n.key {
-                        current_node = &mut n.left_child;
+            let mut new_current = None;
+            if let Some(n) = current_node.as_ref() {
+                
+                if key == (**n).borrow().key { return; }
+                if key < (**n).borrow().key {
+                    if (**n).borrow().left_child.is_none() {
+                        let new = Rc::new(RefCell::new(Node::newp(key, priority, n.clone())));
+                        (**n).borrow_mut().left_child = Some(new);
+                        break;
                     }
-                    else {
-                        current_node = &mut n.right_child; 
-                    };
-                    if *current_node == None {
-                        let new = Box::new(Node::new(key, priority));
-                        let p = n.clone();
-                        CartesienTree::rotate_tree(p, new.clone());
-                        *current_node = Some(new);
-                        return;
+                    else { new_current = (**n).borrow().left_child.clone(); }
+                }
+                else {
+                    if (**n).borrow().right_child.is_none() {
+                        let new = Rc::new(RefCell::new(Node::new(key, priority)));
+                        (**n).borrow_mut().right_child = Some(new);
+                        insert_direction = Direction::Right;
+                        break;
+                    }
+                    else { new_current = (**n).borrow().right_child.clone(); }
+                }
+            }
+            current_node = new_current;
+        }
+        //Rotate
+        loop {
+            match insert_direction {
+                Direction::Left => {
+                    if let Some(n) = current_node.as_ref() {
+                        let pprio = (**n).borrow().priority;
+                        if let Some (n_child) = &(**n).borrow().left_child {
+                            if pprio < (**n_child).borrow().priority {
+                                
+                            }
+                            else { break; }
+                        }
                     }
                 },
-                None => { 
-
+                Direction::Right => {
+                    if let Some(n) = current_node.as_ref() {
+                        let pprio = (**n).borrow().priority;
+                        if let Some (n_child) = &(**n).borrow().left_child {
+                            if pprio < (**n_child).borrow().priority {
+                                
+                            }
+                            else { break; }
+                        }
+                    }
                 }
             }
         }
+        
     }
-    pub fn is_empty(&self) -> bool {
-        self.root.is_none()
-    }
+    pub fn is_empty(&self) -> bool { self.root.is_none() }
+
     pub fn search(&self, key : u32) -> Option<(u32,u32)>{
-        if self.is_empty() {
-            return None;
-        }
-        let mut current_node = &self.root;
+        if self.is_empty() { return None; }
+        let mut current_node = self.root.clone();
         loop {
             match current_node {
                 Some(n) => {
-                    if key < n.key { current_node = &n.left_child; }
-                    else if key == n.key { return Some((n.key, n.priority)); }
-                    else { current_node = &n.right_child; }
+                    if key < (*n).borrow().key { current_node = (*n).borrow().left_child.clone(); }
+                    else if key == (*n).borrow().key { return Some(((*n).borrow().key, (*n).borrow().priority)); }
+                    else { current_node = (*n).borrow().right_child.clone(); }
                 },
                 None => { return None; }
             }
