@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::VecDeque, env::current_exe, rc::Rc};
 
 enum Direction { 
     Right, Left
@@ -32,7 +32,6 @@ impl CartesienTree {
         let mut insert_direction = Direction::Left;//by default
         while let Some(n) = current_node.as_ref() {
             let mut new_current = None;
-                println!("HELLO");
                 if key == (**n).borrow().key { return; }
                 if key < (**n).borrow().key {
                     if (**n).borrow().left_child.is_none() {
@@ -40,7 +39,7 @@ impl CartesienTree {
                         (**n).borrow_mut().left_child = Some(new);
                         break;
                     }
-                    else { new_current = (**n).borrow().left_child.clone(); }
+                    new_current = (**n).borrow().left_child.clone();
                 }
                 else {
                     if (**n).borrow().right_child.is_none() {
@@ -50,7 +49,7 @@ impl CartesienTree {
                         println!("INSERT at right");
                         break;
                     }
-                    else { new_current = (**n).borrow().right_child.clone(); }
+                    new_current = (**n).borrow().right_child.clone();
                 }
             
             current_node = new_current;
@@ -80,6 +79,7 @@ impl CartesienTree {
                     }
                     else {
                         println!("NONE1");
+                        break;
                     }
                 },
                 Direction::Right => {
@@ -103,12 +103,23 @@ impl CartesienTree {
                     }
                     else {
                         println!("NONE1");
+                        break;
                     }
                 }
             }
             current_node = new_current;
         }
-        
+    }
+    pub fn bfs(&self) {
+        let mut file = VecDeque::new();
+        let mut current_node= self.root.clone();
+        file.push_back(current_node);
+
+        while let Some(p) = file.pop_front() {
+            if let Some(rc) = p {
+
+            }
+        }
     }
     pub fn is_empty(&self) -> bool { self.root.is_none() }
 
