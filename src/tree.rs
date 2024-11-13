@@ -66,59 +66,64 @@ impl CartesienTree {
                 Direction::Left => {
                     println!("ROTATE LEFT");
                     if let Some(n) = current_node.as_ref() {
-                        if let Some(parent) = (**n).borrow().parent.clone() {
-                            if (**n).borrow().priority < (*parent).borrow().priority {
+                        if (**n).borrow().left_child.is_none() && (**n).borrow().right_child.is_none() {
+                            println!("NOTHING");
+                        }
+                        if let Some(parent) = (**n).borrow().parent.as_ref() {
+                            if (**n).borrow().priority < (**parent).borrow().priority {
                                 n.borrow_mut().parent = parent.borrow_mut().parent.take();
                                 parent.borrow_mut().parent = Some(n.clone());//Change parent
                                 
                                 parent.borrow_mut().left_child = n.borrow_mut().right_child.take();
-                                n.borrow_mut().right_child = Some(parent.clone());
+                                n.borrow_mut().right_child = Some(Rc::clone(parent));
+                                if (**n).borrow().parent.is_none() {
+                                    self.root = Some(n.clone());
+                                    break;
+                                }
                                 match CartesienTree::does_im_left_child(parent, (**n).borrow().key, (**n).borrow().priority) {
                                     true  => insert_direction = Direction::Left,
                                     false => insert_direction = Direction::Right,
                                 }
                             } else { break; }
-                        }
-                        else {
-                            self.root = Some(n.clone());
-                            break;
-                        }
+                        } else { break; }
                     }
                     else { exit(1); }
                 },
                 Direction::Right => {
                     println!("ROTATE RIGHT");
                     if let Some(n) = current_node.as_ref() {
-                        if let Some(parent) = (**n).borrow().parent.clone() {
-                            if (**n).borrow().priority < (*parent).borrow().priority {
+                        if (**n).borrow().left_child.is_none() && (**n).borrow().right_child.is_none() {
+                            println!("NOTHING");
+                        }
+                        if let Some(parent) = (**n).borrow().parent.as_ref() {
+                            if (**n).borrow().priority < (**parent).borrow().priority {
                                 n.borrow_mut().parent = parent.borrow_mut().parent.take();
                                 parent.borrow_mut().parent = Some(n.clone());//Change parent
 
                                 parent.borrow_mut().right_child = n.borrow_mut().left_child.take();
                                 n.borrow_mut().left_child = Some(parent.clone());
-
-                                match CartesienTree::does_im_left_child(parent, (**n).borrow().key, (**n).borrow().priority) {
+                                if (**n).borrow().parent.is_none() {
+                                    self.root = Some(n.clone());
+                                    break;
+                                }
+                                match CartesienTree::does_im_left_child(&parent, (**n).borrow().key, (**n).borrow().priority) {
                                     true  => insert_direction = Direction::Left,
                                     false => insert_direction = Direction::Right,
                                 }
                             } else { break; }
-                        }
-                        else {
-                            self.root = Some(n.clone());
-                            break;
-                        }
+                        } else { break; }
                     }
                     else {
                         println!("NONE1");
                         exit(1);
                     }
                 }
-            }
+            }            
         }
 
     }
-    pub fn does_im_left_child(parent : Rc<RefCell<Node>>, child_key : u32, child_priority : u32) -> bool {
-            if let Some(lc) = (*parent).borrow().left_child.clone() {
+    pub fn does_im_left_child(parent : &Rc<RefCell<Node>>, child_key : u32, child_priority : u32) -> bool {
+            if let Some(lc) = (**parent).borrow().left_child.clone() {
                 if (*lc).borrow().priority == child_priority && (*lc).borrow().key == child_key {
                     return true;
                 }
