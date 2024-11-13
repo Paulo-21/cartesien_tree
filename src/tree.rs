@@ -66,17 +66,17 @@ impl CartesienTree {
                 Direction::Left => {
                     println!("ROTATE LEFT");
                     if let Some(n) = current_node.as_ref() {
-                        if (**n).borrow().left_child.is_none() && (**n).borrow().right_child.is_none() {
-                            println!("NOTHING");
-                        }
-                        if let Some(parent) = (**n).borrow().parent.as_ref() {
-                            if (**n).borrow().priority < (**parent).borrow().priority {
-                                n.borrow_mut().parent = parent.borrow_mut().parent.take();
-                                parent.borrow_mut().parent = Some(n.clone());//Change parent
+                        let mut nn = (**n).borrow_mut();
+                        
+                        if let Some(parent) = nn.parent.clone().as_ref() {
+                            let mut pp = (**parent).borrow_mut();
+                            if nn.priority < (*pp).priority {
+                                nn.parent = pp.parent.take();
+                                pp.parent = Some(n.clone());//Change parent
                                 
-                                parent.borrow_mut().left_child = n.borrow_mut().right_child.take();
-                                n.borrow_mut().right_child = Some(Rc::clone(parent));
-                                if (**n).borrow().parent.is_none() {
+                                pp.left_child = nn.right_child.take();
+                                nn.right_child = Some(Rc::clone(parent));
+                                if nn.parent.is_none() {
                                     self.root = Some(n.clone());
                                     break;
                                 }
@@ -92,17 +92,17 @@ impl CartesienTree {
                 Direction::Right => {
                     println!("ROTATE RIGHT");
                     if let Some(n) = current_node.as_ref() {
-                        if (**n).borrow().left_child.is_none() && (**n).borrow().right_child.is_none() {
-                            println!("NOTHING");
-                        }
-                        if let Some(parent) = (**n).borrow().parent.as_ref() {
-                            if (**n).borrow().priority < (**parent).borrow().priority {
-                                n.borrow_mut().parent = parent.borrow_mut().parent.take();
-                                parent.borrow_mut().parent = Some(n.clone());//Change parent
+                        let mut nn = n.borrow_mut();
+                        
+                        if let Some(parent) = nn.parent.clone().as_ref() {
+                            let mut pp = parent.borrow_mut();
+                            if nn.priority < pp.priority {
+                                nn.parent = pp.parent.take();
+                                pp.parent = Some(n.clone());//Change parent
 
-                                parent.borrow_mut().right_child = n.borrow_mut().left_child.take();
-                                n.borrow_mut().left_child = Some(parent.clone());
-                                if (**n).borrow().parent.is_none() {
+                                pp.right_child = nn.left_child.take();
+                                nn.left_child = Some(parent.clone());
+                                if nn.parent.is_none() {
                                     self.root = Some(n.clone());
                                     break;
                                 }
@@ -131,7 +131,7 @@ impl CartesienTree {
         false
     }
     pub fn print_bfs(&self) {
-        println!("-------------------BFS----------------");
+        //println!("-------------------BFS----------------");
         let mut file = VecDeque::new();
         file.push_back((self.root.clone(), 0));
         let mut current_level = 0;
@@ -147,6 +147,8 @@ impl CartesienTree {
                 file.push_back(((*r).borrow().right_child.clone(), current_level+1));
             }
         }
+        println!();
+        println!("-------------------END----------------");
     }
 
     pub fn is_empty(&self) -> bool { self.root.is_none() }
