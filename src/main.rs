@@ -10,4 +10,5 @@ fn main() {
     tree.insert(50, 1);
     tree.insert(20, 1);
     tree.insert(93, 1);
+    tree.print_bfs();
 }

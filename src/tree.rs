@@ -1,11 +1,11 @@
-use std::{cell::RefCell, collections::VecDeque, rc::Rc};
+use std::{borrow::Borrow, cell::RefCell, collections::VecDeque, process::exit, rc::Rc};
 
 enum Direction { 
     Right, Left
 }
 
 #[derive(PartialEq, Clone)]
-struct Node {
+pub struct Node {
     key : u32,
     priority : u32,
     left_child : Option<Rc<RefCell<Node>>>,
@@ -27,6 +27,8 @@ impl CartesienTree {
     pub fn new() -> Self { Self{root : None} }
 
     pub fn insert(&mut self, key : u32, priority : u32) {
+        println!();
+        println!("key {key}, priority : {priority}");
         if self.is_empty() { self.root = Some(Rc::new(RefCell::new(Node::new(key, priority)))); return; }
         let mut current_node = self.root.clone();
         let mut insert_direction = Direction::Left;//by default
@@ -39,6 +41,7 @@ impl CartesienTree {
                         let new = Rc::new(RefCell::new(Node::newp(key, priority, n.clone())));
                         (**n).borrow_mut().left_child = Some(new);
                         child_current = (**n).borrow().left_child.clone();
+                        println!("INSERT at left");
                         break;
                     }
                     new_current = (**n).borrow().left_child.clone();
@@ -54,77 +57,93 @@ impl CartesienTree {
                     }
                     new_current = (**n).borrow().right_child.clone();
                 }
-            
             current_node = new_current;
         }
         current_node = child_current;
         //Rotate
-        loop {// Je suis partie dans le mauvais sens, le current node doit être le noeud fils d'avant et on remonte le parent
-            let mut new_current = None;
+        loop {
             match insert_direction {
                 Direction::Left => {
+                    println!("ROTATE LEFT");
                     if let Some(n) = current_node.as_ref() {
-                        let mut o = (**n).borrow_mut();
-                        let cprio = o.priority;
-                        let parent = o.parent.clone();
-                        if let Some (n_parent) = &parent {
-                            if cprio < (**n_parent).borrow().priority {
-                                println!("LEFT");
-                                o.left_child = (**n_parent).borrow_mut().right_child.take();
-                                n_parent.borrow_mut().right_child = Some(n.clone());
-                                std::mem::swap(&mut n_parent.borrow_mut().parent, &mut o.parent); //SWAP parent
-                                new_current = Some(n_parent.clone());
-                            }
-                            else { break; }
+                        if let Some(parent) = (**n).borrow().parent.clone() {
+                            if (**n).borrow().priority < (*parent).borrow().priority {
+                                n.borrow_mut().parent = parent.borrow_mut().parent.take();
+                                parent.borrow_mut().parent = Some(n.clone());//Change parent
+                                
+                                parent.borrow_mut().left_child = n.borrow_mut().right_child.take();
+                                n.borrow_mut().right_child = Some(parent.clone());
+                                match CartesienTree::does_im_left_child(parent, (**n).borrow().key, (**n).borrow().priority) {
+                                    true  => insert_direction = Direction::Left,
+                                    false => insert_direction = Direction::Right,
+                                }
+                            } else { break; }
                         }
                         else {
-                            println!("NONE2");
+                            self.root = Some(n.clone());
+                            break;
                         }
                     }
-                    else {
-                        println!("NONE1");
-                        break;
-                    }
+                    else { exit(1); }
                 },
                 Direction::Right => {
+                    println!("ROTATE RIGHT");
                     if let Some(n) = current_node.as_ref() {
-                        let mut o = (**n).borrow_mut();
-                        let pprio = o.priority;
-                        let right_child = o.right_child.clone();
-                        if let Some (n_child) = &right_child {
-                            if pprio > (**n_child).borrow().priority {
-                                println!("Do ROTATION");
-                                o.right_child = (**n_child).borrow_mut().left_child.take();
-                                n_child.borrow_mut().left_child = Some(n.clone());
-                                std::mem::swap(&mut n_child.borrow_mut().parent, &mut o.parent); //SWAP parent
-                                new_current = Some(n_child.clone());
-                            }
-                            else { break; }
+                        if let Some(parent) = (**n).borrow().parent.clone() {
+                            if (**n).borrow().priority < (*parent).borrow().priority {
+                                n.borrow_mut().parent = parent.borrow_mut().parent.take();
+                                parent.borrow_mut().parent = Some(n.clone());//Change parent
+
+                                parent.borrow_mut().right_child = n.borrow_mut().left_child.take();
+                                n.borrow_mut().left_child = Some(parent.clone());
+
+                                match CartesienTree::does_im_left_child(parent, (**n).borrow().key, (**n).borrow().priority) {
+                                    true  => insert_direction = Direction::Left,
+                                    false => insert_direction = Direction::Right,
+                                }
+                            } else { break; }
                         }
                         else {
-                            println!("NONE2");
+                            self.root = Some(n.clone());
+                            break;
                         }
                     }
                     else {
                         println!("NONE1");
-                        break;
+                        exit(1);
                     }
                 }
             }
-            current_node = new_current;
         }
+
     }
-    pub fn bfs(&self) {
+    pub fn does_im_left_child(parent : Rc<RefCell<Node>>, child_key : u32, child_priority : u32) -> bool {
+            if let Some(lc) = (*parent).borrow().left_child.clone() {
+                if (*lc).borrow().priority == child_priority && (*lc).borrow().key == child_key {
+                    return true;
+                }
+            }
+        false
+    }
+    pub fn print_bfs(&self) {
+        println!("-------------------BFS----------------");
         let mut file = VecDeque::new();
-        let mut current_node= self.root.clone();
-        file.push_back(current_node);
-
-        while let Some(p) = file.pop_front() {
-            if let Some(rc) = p {
-
+        file.push_back((self.root.clone(), 0));
+        let mut current_level = 0;
+        while let Some(next) = file.pop_front() {
+            if let Some(r) = next.0 {
+                if current_level < next.1 {
+                    current_level = next.1;
+                    println!();
+                    print!("Level : {}", next.1);
+                }
+                print!("(k:{}, p:{}) | ", (*r).borrow().key, (*r).borrow().priority);
+                file.push_back(((*r).borrow().left_child.clone(), current_level+1));
+                file.push_back(((*r).borrow().right_child.clone(), current_level+1));
             }
         }
     }
+
     pub fn is_empty(&self) -> bool { self.root.is_none() }
 
     pub fn search(&self, key : u32) -> Option<(u32,u32)>{
