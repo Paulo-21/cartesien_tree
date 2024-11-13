@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::VecDeque, env::current_exe, rc::Rc};
+use std::{cell::RefCell, collections::VecDeque, rc::Rc};
 
 enum Direction { 
     Right, Left
@@ -30,6 +30,7 @@ impl CartesienTree {
         if self.is_empty() { self.root = Some(Rc::new(RefCell::new(Node::new(key, priority)))); return; }
         let mut current_node = self.root.clone();
         let mut insert_direction = Direction::Left;//by default
+        let mut child_current = None;
         while let Some(n) = current_node.as_ref() {
             let mut new_current = None;
                 if key == (**n).borrow().key { return; }
@@ -37,6 +38,7 @@ impl CartesienTree {
                     if (**n).borrow().left_child.is_none() {
                         let new = Rc::new(RefCell::new(Node::newp(key, priority, n.clone())));
                         (**n).borrow_mut().left_child = Some(new);
+                        child_current = (**n).borrow().left_child.clone();
                         break;
                     }
                     new_current = (**n).borrow().left_child.clone();
@@ -47,6 +49,7 @@ impl CartesienTree {
                         (**n).borrow_mut().right_child = Some(new);
                         insert_direction = Direction::Right;
                         println!("INSERT at right");
+                        child_current = (**n).borrow().right_child.clone();
                         break;
                     }
                     new_current = (**n).borrow().right_child.clone();
@@ -54,6 +57,7 @@ impl CartesienTree {
             
             current_node = new_current;
         }
+        current_node = child_current;
         //Rotate
         loop {// Je suis partie dans le mauvais sens, le current node doit être le noeud fils d'avant et on remonte le parent
             let mut new_current = None;
@@ -61,15 +65,15 @@ impl CartesienTree {
                 Direction::Left => {
                     if let Some(n) = current_node.as_ref() {
                         let mut o = (**n).borrow_mut();
-                        let pprio = o.priority;
-                        let left_child = o.left_child.clone();
-                        if let Some (n_child) = &left_child {
-                            if pprio > (**n_child).borrow().priority {
+                        let cprio = o.priority;
+                        let parent = o.parent.clone();
+                        if let Some (n_parent) = &parent {
+                            if cprio < (**n_parent).borrow().priority {
                                 println!("LEFT");
-                                o.left_child = (**n_child).borrow_mut().right_child.take();
-                                n_child.borrow_mut().right_child = Some(n.clone());
-                                std::mem::swap(&mut n_child.borrow_mut().parent, &mut o.parent); //SWAP parent
-                                new_current = Some(n_child.clone());
+                                o.left_child = (**n_parent).borrow_mut().right_child.take();
+                                n_parent.borrow_mut().right_child = Some(n.clone());
+                                std::mem::swap(&mut n_parent.borrow_mut().parent, &mut o.parent); //SWAP parent
+                                new_current = Some(n_parent.clone());
                             }
                             else { break; }
                         }
