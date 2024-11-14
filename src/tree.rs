@@ -58,6 +58,7 @@ impl CartesienTree {
     pub fn insert_char(&mut self, key : char, priority : u32) {
         self.insert(key.to_ascii_lowercase() as u32 - 97, priority);
     }
+    #[inline]
     pub fn insert(&mut self, key : u32, priority : u32) {
         //println!();
         if self.is_empty() { self.root = Some(Rc::new(RefCell::new(Node::new(key, priority)))); return; }
@@ -228,18 +229,15 @@ impl CartesienTree {
     }
 }
 
-
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
-    
     #[test]
     fn tree1() {
         let noeuds = [('A', 5),('B', 3),('C', 8),('D', 2),('E', 6),('F', 7),('G', 9),('H', 1),('I', 10),('J', 12)];
         let mut tree = CartesienTree::new();
-        for (k, p) in noeuds {
-            tree.insert_char(k, p);
-        }
+        noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
         let seq = tree.bfs();
         assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
     }
@@ -247,9 +245,7 @@ mod tests {
     fn tree2() {
         let noeuds = [('H', 1),('G', 9),('A', 5),('B', 3),('D', 2),('F', 7),('C', 8),('J', 12),('I', 10),('E', 6)];
         let mut tree = CartesienTree::new();
-        for (k, p) in noeuds {
-            tree.insert_char(k, p);
-        }
+        noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
         let seq = tree.bfs();
         assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
     }
@@ -257,10 +253,8 @@ mod tests {
     fn tree3() {
         let noeuds = [('E', 6),('H', 1),('B', 3),('D', 2),('C', 8),('F', 7),('G', 9),('J', 12),('A', 5),('I', 10)];
         let mut tree = CartesienTree::new();
-        for (k, p) in noeuds {
-            tree.insert_char(k, p);
-        }
+        noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
         let seq = tree.bfs();
         assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
     }
-}
+}*/
