@@ -5,8 +5,8 @@ edition = "2021"
 
 [dependencies]
 #criterion = "0.5"
-criterion = {git = "https://github.com/bheisler/criterion.rs", features = ["html_reports"]}
-rand = "0.8.5"
+#criterion = {git = "https://github.com/bheisler/criterion.rs", features = ["html_reports"]}
+#rand = "0.8.5"
 
 [[bench]]
 name = "bench_tree"

@@ -229,7 +229,7 @@ impl CartesienTree {
     }
 }
 
-/*
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -257,4 +257,4 @@ mod tests {
         let seq = tree.bfs();
         assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
     }
-}*/
+}
