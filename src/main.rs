@@ -1,6 +1,6 @@
-
 mod tree;
-use tree::*;
+use tree::CartesienTree;
+
 fn main() {
     let mut tree = CartesienTree::new();
     tree.insert(3, 5);

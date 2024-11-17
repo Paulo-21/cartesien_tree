@@ -102,17 +102,19 @@ impl CartesienTree {
         }
         current_node = child_current;
         //Rotate
-        while let Some(n) = current_node.as_ref() {
+        if let Some(n) = current_node.as_ref() {
+            loop {
                 let nn = n.borrow_mut();
-                if let Some(parent) = nn.parent.clone().as_ref() {
-                    let pp = parent.borrow_mut();
-                    if nn.priority < pp.priority {
-                        match CartesienTree::rotate(self, nn, pp, insert_direction, n.clone(), parent.clone()) {
-                            Some(insed) => insert_direction = insed,
-                            None => return
-                        }
-                    } else {break;}
-                } else { break; }      
+                    if let Some(parent) = nn.parent.clone().as_ref() {
+                        let pp = parent.borrow_mut();
+                        if nn.priority < pp.priority {
+                            match CartesienTree::rotate(self, nn, pp, insert_direction, n.clone(), parent.clone()) {
+                                Some(insed) => insert_direction = insed,
+                                None => return
+                            }
+                        } else {break;}
+                    } else { break; }      
+            }
         }
     }
     fn rotate(&mut self, mut nn : RefMut<'_, Node>, mut pp : RefMut<'_, Node>, mut insert_direction :Direction, n : Rc<RefCell<Node>>, parent :Rc<RefCell<Node>> ) -> Option<Direction> {
