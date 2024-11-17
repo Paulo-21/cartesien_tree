@@ -1,5 +1,9 @@
 use std::{cell::RefCell, collections::VecDeque, fmt::Display, rc::Rc};
 use std::cmp::Ordering::*;
+
+pub enum SearchError {
+    ElementNotFind,
+}
 enum Direction { 
     Right, Left
 }
@@ -173,6 +177,11 @@ impl CartesienTree {
                 }
             }
         false
+    }
+    
+    pub fn remove() -> Result<(), SearchError>{
+
+        Ok(())
     }
     pub fn print_bfs(&self) {
         //println!("-------------------BFS----------------");
