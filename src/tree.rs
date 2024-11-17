@@ -1,9 +1,12 @@
+use std::cell::RefMut;
 use std::{cell::RefCell, collections::VecDeque, fmt::Display, rc::Rc};
 use std::cmp::Ordering::*;
 
-pub enum SearchError {
+#[derive(Debug)]
+pub enum TreeError {
     ElementNotFind,
 }
+#[derive(Clone, Copy)]
 enum Direction { 
     Right, Left
 }
@@ -62,27 +65,22 @@ impl CartesienTree {
     pub fn insert_char(&mut self, key : char, priority : u32) {
         self.insert(key.to_ascii_lowercase() as u32 - 97, priority);
     }
-    #[inline]
+    
     pub fn insert(&mut self, key : u32, priority : u32) {
-        //println!();
         if self.is_empty() { self.root = Some(Rc::new(RefCell::new(Node::new(key, priority)))); return; }
         let mut current_node = self.root.clone();
         let mut insert_direction = Direction::Left;//by default
         let mut child_current = None;
-        //println!("TRY insert : k : {key}, prio : {priority}");
         loop {
             let mut new_current = None;
             if let Some(n) = current_node.as_ref() {
                 let mut nn = n.borrow_mut();
                 match key.cmp(&nn.key) {
                     Less => {
-                        //println!("GO LEFT");
                         if nn.left_child.is_none() {
                             let new = Rc::new(RefCell::new(Node::newp(key, priority, n.clone())));
                             child_current = Some(new.clone());
                             nn.left_child = Some(new);
-                            //println!("INSERT at left");
-                            //println!("{} {}", nn.key,nn.priority );
                             break;
                         }
                         new_current = nn.left_child.clone();
@@ -93,7 +91,6 @@ impl CartesienTree {
                             child_current = Some(new.clone());
                             nn.right_child = Some(new);
                             insert_direction = Direction::Right;
-                            //println!("INSERT at right");
                             break;
                         }
                         new_current = nn.right_child.clone();
@@ -105,70 +102,67 @@ impl CartesienTree {
         }
         current_node = child_current;
         //Rotate
-        loop {
-            //println!("-----------INSIDE LOOP------------");
-            //self.print_bfs();
-            if let Some(n) = current_node.as_ref() {
-                let mut nn = n.borrow_mut();
+        while let Some(n) = current_node.as_ref() {
+                let nn = n.borrow_mut();
                 if let Some(parent) = nn.parent.clone().as_ref() {
-                    let mut pp = parent.borrow_mut();
+                    let pp = parent.borrow_mut();
                     if nn.priority < pp.priority {
-                        let mut child = None;
-                        match insert_direction {
-                            Direction::Left => {
-                                //println!("ROTATE LEFT");
-                                nn.parent = pp.parent.take();
-                                pp.parent = Some(n.clone());
-
-                                pp.left_child = nn.right_child.take();
-                                child = pp.left_child.clone();
-                                nn.right_child = Some(Rc::clone(parent));
-                                
-                            },
-                            Direction::Right => {
-                                //println!("ROTATE RIGHT");
-                                nn.parent = pp.parent.take();
-                                pp.parent = Some(n.clone());//Change parent
-
-                                pp.right_child = nn.left_child.take();
-                                child = pp.right_child.clone();
-                                nn.left_child = Some(Rc::clone(parent));
-                                
-                            }
-                        }
-                        if let Some(c) = child.as_ref() {
-                            c.borrow_mut().parent = Some(parent.clone());
-                        }
-                        drop(child);
-                        if nn.parent.is_none() {
-                            self.root = Some(n.clone());
-                            return;
-                        }
-                        let r = nn.parent.clone();
-                        let test_key = pp.key;
-                        let test_prio = pp.priority;
-                        //println!("N : {} {}", nn.key, nn.priority);
-                        //println!("P : {} {}", test_key, test_prio);
-
-                        drop(pp);
-                        drop(nn);
-                        if let Some(c) = r.as_ref() {
-                            //println!("PPP : {} {}",c.borrow().key, c.borrow().priority);
-                            match CartesienTree::does_im_left_child(c, test_key, test_prio) {
-                                true  => {
-                                    insert_direction = Direction::Left;
-                                    c.borrow_mut().left_child = Some(Rc::clone(n));
-                                },
-                                false => {
-                                    insert_direction = Direction::Right;
-                                    c.borrow_mut().right_child = Some(Rc::clone(n));
-                                },
-                            }
+                        match CartesienTree::rotate(self, nn, pp, insert_direction, n.clone(), parent.clone()) {
+                            Some(insed) => insert_direction = insed,
+                            None => return
                         }
                     } else {break;}
-                } else { break; }
-            } else { break; }                  
+                } else { break; }      
         }
+    }
+    fn rotate(&mut self, mut nn : RefMut<'_, Node>, mut pp : RefMut<'_, Node>, mut insert_direction :Direction, n : Rc<RefCell<Node>>, parent :Rc<RefCell<Node>> ) -> Option<Direction> {
+        match insert_direction {
+            Direction::Left => {
+                nn.parent = pp.parent.take();
+                pp.parent = Some(n.clone());
+
+                pp.left_child = nn.right_child.take();
+                if let Some(c) = pp.left_child.as_ref() { 
+                    c.borrow_mut().parent = Some(parent.clone());
+                }
+                nn.right_child = Some(Rc::clone(&parent));         
+            },
+            Direction::Right => {
+                nn.parent = pp.parent.take();
+                pp.parent = Some(n.clone());//Change parent
+                pp.right_child = nn.left_child.take();
+                if let Some(c) = pp.right_child.as_ref() {
+                    c.borrow_mut().parent = Some(parent.clone());
+                }
+                nn.left_child = Some(Rc::clone(&parent));            
+            }
+        }
+        if nn.parent.is_none() {
+            self.root = Some(n.clone());
+            None
+        }
+        else {
+            let r = nn.parent.clone();
+            let test_key = pp.key;
+            let test_prio = pp.priority;
+            drop(pp);
+            drop(nn);
+            if let Some(c) = r.as_ref() {
+                //println!("PPP : {} {}",c.borrow().key, c.borrow().priority);
+                match CartesienTree::does_im_left_child(c, test_key, test_prio) {
+                    true  => {
+                        insert_direction = Direction::Left;
+                        c.borrow_mut().left_child = Some(Rc::clone(&n));
+                    },
+                    false => {
+                        insert_direction = Direction::Right;
+                        c.borrow_mut().right_child = Some(Rc::clone(&n));
+                    },
+                }
+            }
+            Some(insert_direction)
+        }
+
     }
     pub fn does_im_left_child(parent : &Rc<RefCell<Node>>, child_key : u32, child_priority : u32) -> bool {
             if let Some(lc) = (**parent).borrow().left_child.clone() {
@@ -180,14 +174,46 @@ impl CartesienTree {
         false
     }
     
-    pub fn remove(&mut self, key:u32) -> Result<(), SearchError>{
-        let mut to_remove = self.bin_search(key)?;
+    pub fn remove(&mut self, key:u32) -> Result<(), TreeError>{
+        let to_remove = self.bin_search(key)?;
+        
         loop {
-            if to_remove.borrow().left_child.is_none() {
-                
+            if to_remove.borrow().left_child.is_none() && to_remove.borrow().left_child.is_none() {
+                if (*to_remove).borrow_mut().parent.is_none() {
+                    self.root = None;
+                } else {
+                    let parent = (*to_remove).borrow_mut().parent.take().unwrap();
+                    match CartesienTree::does_im_left_child(&parent, (*to_remove).borrow().key, (*to_remove).borrow().priority) {
+                        true => (*parent).borrow_mut().left_child = None,
+                        false => (*parent).borrow_mut().right_child = None,
+                    }
+
+                }
+                drop(to_remove);
+                return Ok(());
+            }
+            else {
+                let kl = match to_remove.borrow().left_child.as_ref() {
+                    Some(r) => r.borrow().priority,
+                    None => u32::MAX
+                };
+                let kr = match to_remove.borrow().right_child.as_ref() {
+                    Some(r) => r.borrow().priority,
+                    None => u32::MAX
+                };
+                if kl <= kr {
+                    let pp = to_remove.borrow_mut();
+                    let c = pp.left_child.clone().unwrap();
+                    let nn = c.borrow_mut();
+                    let _ = self.rotate(nn, pp, Direction::Left, c.clone(), to_remove.clone());
+                } else {
+                    let pp = to_remove.borrow_mut();
+                    let c = pp.right_child.clone().unwrap();
+                    let nn = c.borrow_mut();
+                    let _ = self.rotate(nn, pp, Direction::Right, c.clone(), to_remove.clone());
+                }
             }
         }
-        Ok(())
     }
     pub fn print_bfs(&self) {
         //println!("-------------------BFS----------------");
@@ -225,8 +251,8 @@ impl CartesienTree {
 
     pub fn is_empty(&self) -> bool { self.root.is_none() }
 
-    pub fn bin_search(&self, key : u32) -> Result<Rc<RefCell<Node>>, SearchError>{
-        if self.is_empty() { return Err(SearchError::ElementNotFind); }
+    pub fn bin_search(&self, key : u32) -> Result<Rc<RefCell<Node>>, TreeError>{
+        if self.is_empty() { return Err(TreeError::ElementNotFind); }
         let mut current_node = self.root.clone();
         loop {
             match current_node {
@@ -237,7 +263,7 @@ impl CartesienTree {
                         Equal => return Ok(n.clone()),
                     }
                 },
-                None => { return Err(SearchError::ElementNotFind); }
+                None => { return Err(TreeError::ElementNotFind); }
             }
         }
     }

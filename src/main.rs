@@ -17,4 +17,6 @@ fn main() {
     tree.print_bfs();
     tree.insert(93, 1);
     tree.print_bfs();
+    tree.remove(50).unwrap();
+    tree.print_bfs();
 }
