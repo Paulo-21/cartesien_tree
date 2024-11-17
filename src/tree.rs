@@ -180,8 +180,13 @@ impl CartesienTree {
         false
     }
     
-    pub fn remove() -> Result<(), SearchError>{
-
+    pub fn remove(&mut self, key:u32) -> Result<(), SearchError>{
+        let mut to_remove = self.bin_search(key)?;
+        loop {
+            if to_remove.borrow().left_child.is_none() {
+                
+            }
+        }
         Ok(())
     }
     pub fn print_bfs(&self) {
@@ -220,8 +225,8 @@ impl CartesienTree {
 
     pub fn is_empty(&self) -> bool { self.root.is_none() }
 
-    pub fn search(&self, key : u32) -> Option<(u32,u32)>{
-        if self.is_empty() { return None; }
+    pub fn bin_search(&self, key : u32) -> Result<Rc<RefCell<Node>>, SearchError>{
+        if self.is_empty() { return Err(SearchError::ElementNotFind); }
         let mut current_node = self.root.clone();
         loop {
             match current_node {
@@ -229,10 +234,10 @@ impl CartesienTree {
                     match key.cmp(&n.borrow().key) {
                         Less => current_node = n.borrow().left_child.clone(),
                         Greater => current_node = n.borrow().right_child.clone(),
-                        Equal => return Some((n.borrow().key, n.borrow().priority)),
+                        Equal => return Ok(n.clone()),
                     }
                 },
-                None => { return None; }
+                None => { return Err(SearchError::ElementNotFind); }
             }
         }
     }
