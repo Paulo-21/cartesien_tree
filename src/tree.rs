@@ -3,7 +3,7 @@ use std::u32;
 use std::{cell::RefCell, collections::VecDeque, fmt::Display, rc::Rc};
 use std::cmp::Ordering::*;
 
-trait Max<P> { fn get_max() -> P; }
+pub trait Max<P> { fn get_max() -> P; }
 impl Max<u8> for u8 { fn get_max() -> u8 { u8::MAX } }
 impl Max<u16> for u16 { fn get_max() -> u16 { u16::MAX } }
 impl Max<u32> for u32 { fn get_max() -> u32 { u32::MAX } }
@@ -12,6 +12,8 @@ impl Max<i8> for i8 { fn get_max() -> i8 { i8::MAX } }
 impl Max<i16> for i16 { fn get_max() -> i16 { i16::MAX } }
 impl Max<i32> for i32 { fn get_max() -> i32 { i32::MAX } }
 impl Max<i64> for i64 { fn get_max() -> i64 { i64::MAX } }
+impl Max<f64> for f64 { fn get_max() -> f64 { f64::MAX } }
+impl Max<f32> for f32 { fn get_max() -> f32 { f32::MAX } }
 
 #[derive(Debug)]
 pub enum TreeError {
