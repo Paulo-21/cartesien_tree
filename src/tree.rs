@@ -14,8 +14,6 @@ impl Max<i32> for i32 { fn get_max() -> i32 { i32::MAX } }
 impl Max<i64> for i64 { fn get_max() -> i64 { i64::MAX } }
 impl Max<f64> for f64 { fn get_max() -> f64 { f64::MAX } }
 impl Max<f32> for f32 { fn get_max() -> f32 { f32::MAX } }
-
-#[derive(Debug)]
 pub enum TreeError {
     ElementNotFind,
 }

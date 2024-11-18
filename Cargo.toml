@@ -4,3 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+fastrand ={ version = "2", optional = true}
+
+[profile.release]
+strip = true
+panic = "abort"
+
+[features]
+benchmark = ["dep:fastrand"]
