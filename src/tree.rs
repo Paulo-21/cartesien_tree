@@ -1,6 +1,17 @@
 use std::cell::RefMut;
+use std::u32;
 use std::{cell::RefCell, collections::VecDeque, fmt::Display, rc::Rc};
 use std::cmp::Ordering::*;
+
+trait Max<P> { fn get_max() -> P; }
+impl Max<u8> for u8 { fn get_max() -> u8 { u8::MAX } }
+impl Max<u16> for u16 { fn get_max() -> u16 { u16::MAX } }
+impl Max<u32> for u32 { fn get_max() -> u32 { u32::MAX } }
+impl Max<u64> for u64 { fn get_max() -> u64 { u64::MAX } }
+impl Max<i8> for i8 { fn get_max() -> i8 { i8::MAX } }
+impl Max<i16> for i16 { fn get_max() -> i16 { i16::MAX } }
+impl Max<i32> for i32 { fn get_max() -> i32 { i32::MAX } }
+impl Max<i64> for i64 { fn get_max() -> i64 { i64::MAX } }
 
 #[derive(Debug)]
 pub enum TreeError {
@@ -20,14 +31,16 @@ impl Display for Direction {
 }
 
 #[derive(PartialEq, Clone, Debug)]
-pub struct Node {
-    key : u32,
-    priority : u32,
-    left_child : Option<Rc<RefCell<Node>>>,
-    right_child : Option<Rc<RefCell<Node>>>,
-    parent : Option<Rc<RefCell<Node>>>,
+pub struct Node<K,P> {
+    key : K,
+    priority : P,
+    left_child : Option<Rc<RefCell<Node<K,P>>>>,
+    right_child : Option<Rc<RefCell<Node<K,P>>>>,
+    parent : Option<Rc<RefCell<Node<K,P>>>>,
 }
-impl Display for Node {
+impl<K,P> Display for Node<K,P>
+where K: Display, P: std::fmt::Display 
+{   
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         /*let left = Node::fmt_kp(&self.left_child);
         let right = Node::fmt_kp(&self.right_child);
@@ -37,8 +50,9 @@ impl Display for Node {
     }
 }
 
-impl Node {
-    fn fmt_kp(node : &Option<Rc<RefCell<Node>>>) -> String {
+impl<K,P> Node<K,P> {
+    fn fmt_kp(node : &Option<Rc<RefCell<Node<K,P>>>>) -> String
+    where K : ToString, P : ToString {
         if let Some(l) = node.as_ref() {
             let mut k = (*l).borrow().key.to_string();
             k.push_str(":");
@@ -46,27 +60,32 @@ impl Node {
             k
         }else { "None".to_string() }
     }
-    pub fn new(key : u32, priority : u32) -> Self {
+    pub fn new(key : K, priority : P) -> Self {
         Self{ key, priority, left_child: None, right_child: None, parent:None }
     }
-    pub fn newp(key : u32, priority : u32, parent : Rc<RefCell<Node>>) -> Self {
+    pub fn newp(key : K, priority : P, parent : Rc<RefCell<Node<K,P>>>) -> Self {
         Self{ key, priority, left_child: None, right_child: None, parent:Some(parent) }
     }
 }
-pub struct CartesienTree {
-    root : Option<Rc<RefCell<Node>>>,
+pub struct CartesienTree<K,P> {
+    root : Option<Rc<RefCell<Node<K,P>>>>,
 }
-impl CartesienTree {
-    pub fn new() -> Self { Self{root : None} }
-    pub fn insert_str(&mut self, key : &str, priority : u32) {
-        let keyn= key.chars().fold(0, |acc , x|26*(acc+x as u32));
+impl<P> CartesienTree<u32,P> {
+    pub fn insert_str(&mut self, key : &str, priority : P) 
+    where P : PartialOrd + Copy {
+        let keyn: u32= key.chars().fold(0, |acc , x|26*(acc+x as u32));
         self.insert(keyn, priority);
     }
-    pub fn insert_char(&mut self, key : char, priority : u32) {
+    pub fn insert_char(&mut self, key : char, priority : P)
+    where P : PartialOrd + Copy {
         self.insert(key.to_ascii_lowercase() as u32 - 97, priority);
     }
+}
+impl<K,P> CartesienTree<K,P> {
+    pub fn new() -> Self { Self{root : None} }
     
-    pub fn insert(&mut self, key : u32, priority : u32) {
+    pub fn insert(&mut self, key : K, priority : P)
+    where K : PartialOrd + Ord + Copy, P : PartialOrd + Copy {
         if self.is_empty() { self.root = Some(Rc::new(RefCell::new(Node::new(key, priority)))); return; }
         let mut current_node = self.root.clone();
         let mut insert_direction = Direction::Left;//by default
@@ -117,7 +136,8 @@ impl CartesienTree {
             }
         }
     }
-    fn rotate(&mut self, mut nn : RefMut<'_, Node>, mut pp : RefMut<'_, Node>, mut insert_direction :Direction, n : Rc<RefCell<Node>>, parent :Rc<RefCell<Node>> ) -> Option<Direction> {
+    fn rotate(&mut self, mut nn : RefMut<'_, Node<K,P>>, mut pp : RefMut<'_, Node<K,P>>, mut insert_direction :Direction, n : Rc<RefCell<Node<K,P>>>, parent :Rc<RefCell<Node<K,P>>> ) -> Option<Direction> 
+    where K: PartialEq+ Copy, P : PartialEq + Copy {
         match insert_direction {
             Direction::Left => {
                 nn.parent = pp.parent.take();
@@ -166,7 +186,8 @@ impl CartesienTree {
         }
 
     }
-    pub fn does_im_left_child(parent : &Rc<RefCell<Node>>, child_key : u32, child_priority : u32) -> bool {
+    pub fn does_im_left_child(parent : &Rc<RefCell<Node<K,P>>>, child_key : K, child_priority : P) -> bool 
+    where K : PartialEq, P : PartialEq {
             if let Some(lc) = (**parent).borrow().left_child.clone() {
                 let lcc = lc.borrow();
                 if lcc.priority == child_priority && lcc.key == child_key {
@@ -176,7 +197,8 @@ impl CartesienTree {
         false
     }
     
-    pub fn remove(&mut self, key:u32) -> Result<(), TreeError>{
+    pub fn remove(&mut self, key:K) -> Result<(), TreeError> 
+    where K : PartialEq + Copy + Ord, P :  Copy + Max<P> + PartialOrd {
         let to_remove = self.bin_search(key)?;
         
         loop {
@@ -195,15 +217,15 @@ impl CartesienTree {
                 return Ok(());
             }
             else {
-                let kl = match to_remove.borrow().left_child.as_ref() {
+                let pl = match to_remove.borrow().left_child.as_ref() {
                     Some(r) => r.borrow().priority,
-                    None => u32::MAX
+                    None => P::get_max()
                 };
-                let kr = match to_remove.borrow().right_child.as_ref() {
+                let pr = match to_remove.borrow().right_child.as_ref() {
                     Some(r) => r.borrow().priority,
-                    None => u32::MAX
+                    None => P::get_max()
                 };
-                if kl <= kr {
+                if pl <= pr {
                     let pp = to_remove.borrow_mut();
                     let c = pp.left_child.clone().unwrap();
                     let nn = c.borrow_mut();
@@ -217,7 +239,8 @@ impl CartesienTree {
             }
         }
     }
-    pub fn print_bfs(&self) {
+    pub fn print_bfs(&self)
+    where K : Display, P : Display {
         //println!("-------------------BFS----------------");
         let mut file = VecDeque::new();
         file.push_back((self.root.clone(), 0, Direction::Left));
@@ -237,7 +260,7 @@ impl CartesienTree {
         println!();
         println!("-------------------END----------------");
     }
-    pub fn bfs(&self) -> Vec<u32> {
+    pub fn bfs(&self) -> Vec<K> where K : Clone + Copy {
         let mut seq = Vec::new();
         let mut file = VecDeque::new();
         file.push_back(self.root.clone());
@@ -253,7 +276,9 @@ impl CartesienTree {
 
     pub fn is_empty(&self) -> bool { self.root.is_none() }
 
-    pub fn bin_search(&self, key : u32) -> Result<Rc<RefCell<Node>>, TreeError>{
+    pub fn bin_search(&self, key : K) -> Result<Rc<RefCell<Node<K,P>>>, TreeError>
+    where K : Ord
+    {
         if self.is_empty() { return Err(TreeError::ElementNotFind); }
         let mut current_node = self.root.clone();
         loop {
@@ -278,7 +303,7 @@ mod tests {
     #[test]
     fn tree1() {
         let noeuds = [('A', 5),('B', 3),('C', 8),('D', 2),('E', 6),('F', 7),('G', 9),('H', 1),('I', 10),('J', 12)];
-        let mut tree = CartesienTree::new();
+        let mut tree = CartesienTree::<u32,u32>::new();
         noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
         let seq = tree.bfs();
         assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
@@ -286,7 +311,7 @@ mod tests {
     #[test]
     fn tree2() {
         let noeuds = [('H', 1),('G', 9),('A', 5),('B', 3),('D', 2),('F', 7),('C', 8),('J', 12),('I', 10),('E', 6)];
-        let mut tree = CartesienTree::new();
+        let mut tree = CartesienTree::<u32,u32>::new();
         noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
         let seq = tree.bfs();
         assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
@@ -294,7 +319,7 @@ mod tests {
     #[test]
     fn tree3() {
         let noeuds = [('E', 6),('H', 1),('B', 3),('D', 2),('C', 8),('F', 7),('G', 9),('J', 12),('A', 5),('I', 10)];
-        let mut tree = CartesienTree::new();
+        let mut tree = CartesienTree::<u32,u32>::new();
         noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
         let seq = tree.bfs();
         assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
