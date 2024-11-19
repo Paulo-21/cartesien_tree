@@ -131,7 +131,7 @@ impl<K,P> CartesienTree<K,P> {
                 if let Some(c) = pp.left_child.as_ref() { 
                     c.borrow_mut().parent = Some(parent.clone());
                 }
-                nn.right_child = Some(Rc::clone(&parent));         
+                nn.right_child = Some(parent);         
             },
             Direction::Right => {
                 nn.parent = pp.parent.take();
@@ -140,7 +140,7 @@ impl<K,P> CartesienTree<K,P> {
                 if let Some(c) = pp.right_child.as_ref() {
                     c.borrow_mut().parent = Some(parent.clone());
                 }
-                nn.left_child = Some(Rc::clone(&parent));            
+                nn.left_child = Some(parent);            
             }
         }
         if nn.parent.is_none() {
