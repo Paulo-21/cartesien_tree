@@ -1,19 +1,7 @@
 use std::cell::RefMut;
-use std::u32;
 use std::{cell::RefCell, collections::VecDeque, fmt::Display, rc::Rc};
 use std::cmp::Ordering::*;
 
-pub trait Max<P> { fn get_max() -> P; }
-impl Max<u8> for u8 { fn get_max() -> u8 { u8::MAX } }
-impl Max<u16> for u16 { fn get_max() -> u16 { u16::MAX } }
-impl Max<u32> for u32 { fn get_max() -> u32 { u32::MAX } }
-impl Max<u64> for u64 { fn get_max() -> u64 { u64::MAX } }
-impl Max<i8> for i8 { fn get_max() -> i8 { i8::MAX } }
-impl Max<i16> for i16 { fn get_max() -> i16 { i16::MAX } }
-impl Max<i32> for i32 { fn get_max() -> i32 { i32::MAX } }
-impl Max<i64> for i64 { fn get_max() -> i64 { i64::MAX } }
-impl Max<f64> for f64 { fn get_max() -> f64 { f64::MAX } }
-impl Max<f32> for f32 { fn get_max() -> f32 { f32::MAX } }
 pub enum TreeError {
     ElementNotFind,
 }
@@ -42,10 +30,6 @@ impl<K,P> Display for Node<K,P>
 where K: Display, P: std::fmt::Display 
 {   
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        /*let left = Node::fmt_kp(&self.left_child);
-        let right = Node::fmt_kp(&self.right_child);
-        let parent = Node::fmt_kp(&self.parent);
-        write!(f, "(n :{}:{}, ln {} , rn {}, p {})", self.key, self.priority, left, right, parent )*/
         write!(f, "(n :{}:{})", self.key, self.priority )
     }
 }
@@ -170,7 +154,6 @@ impl<K,P> CartesienTree<K,P> {
             drop(pp);
             drop(nn);
             if let Some(c) = r.as_ref() {
-                //println!("PPP : {} {}",c.borrow().key, c.borrow().priority);
                 match CartesienTree::does_im_left_child(c, test_key, test_prio) {
                     true  => {
                         insert_direction = Direction::Left;
@@ -198,7 +181,7 @@ impl<K,P> CartesienTree<K,P> {
     }
     
     pub fn remove(&mut self, key:K) -> Result<(), TreeError> 
-    where K : PartialEq + Copy + Ord, P :  Copy + Max<P> + PartialOrd {
+    where K : PartialEq + Copy + Ord, P :  Copy + PartialOrd {
         let to_remove = self.bin_search(key)?;
         
         loop {
@@ -217,25 +200,39 @@ impl<K,P> CartesienTree<K,P> {
                 return Ok(());
             }
             else {
-                let pl = match to_remove.borrow().left_child.as_ref() {
-                    Some(r) => r.borrow().priority,
-                    None => P::get_max()
-                };
-                let pr = match to_remove.borrow().right_child.as_ref() {
-                    Some(r) => r.borrow().priority,
-                    None => P::get_max()
-                };
-                if pl <= pr {
-                    let pp = to_remove.borrow_mut();
-                    let c = pp.left_child.clone().unwrap();
-                    let nn = c.borrow_mut();
-                    let _ = self.rotate(nn, pp, Direction::Left, c.clone(), to_remove.clone());
-                } else {
+                if to_remove.borrow().left_child.is_none() {
                     let pp = to_remove.borrow_mut();
                     let c = pp.right_child.clone().unwrap();
                     let nn = c.borrow_mut();
                     let _ = self.rotate(nn, pp, Direction::Right, c.clone(), to_remove.clone());
                 }
+                else if to_remove.borrow().right_child.is_none() {
+                    let pp = to_remove.borrow_mut();
+                        let c = pp.left_child.clone().unwrap();
+                        let nn = c.borrow_mut();
+                        let _ = self.rotate(nn, pp, Direction::Left, c.clone(), to_remove.clone());
+                }
+                else {
+                    let to_remove_ref = to_remove.borrow_mut();
+                    if let Some(leftc) = to_remove_ref.left_child.as_ref() {
+                        if let Some(rightc) = to_remove_ref.right_child.as_ref() {
+                            let pl = leftc.borrow().priority;
+                            let pr = rightc.borrow().priority;
+                            if pl <= pr {
+                                let pp = to_remove_ref;
+                                let c = pp.left_child.clone().unwrap();
+                                let nn = c.borrow_mut();
+                                let _ = self.rotate(nn, pp, Direction::Left, c.clone(), to_remove.clone());
+                            } else {
+                                let pp = to_remove_ref;
+                                let c = pp.right_child.clone().unwrap();
+                                let nn = c.borrow_mut();
+                                let _ = self.rotate(nn, pp, Direction::Right, c.clone(), to_remove.clone());
+                            }
+                        }
+                    }                    
+                }
+                
             }
         }
     }
