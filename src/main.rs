@@ -24,24 +24,39 @@ fn main() {
 
 #[cfg(feature = "benchmark")]
 fn main() {
+    #[derive(Debug)]
+    pub enum Interaction {
+        Insertion, Suppression, Search
+    }
     use fastrand::Rng;
     use std::time::Instant;
-    pub fn insert_tonnes(n : u32) {
+    pub fn insert_tonnes(tree : &mut CartesienTree<u32,u32>, n : u32, interac : &Interaction) {
         let mut rng = Rng::new();
-        let mut tree = CartesienTree::new();
+        
         for _ in 0..n {
             let k: u32 = rng.u32(..);
             let p: u32 = rng.u32(..);
-            tree.insert(k, p);
+            match *interac {
+                Interaction::Insertion => tree.insert(k, p),
+                Interaction::Search => _ = tree.bin_search(k),
+                Interaction::Suppression => tree.insert(k, p),
+            }
+            
         }
     }
-    let start = Instant::now();
-    insert_tonnes(1000);
-    println!("1000 nodes in {} ms", start.elapsed().as_millis());
-    let start = Instant::now();
-    insert_tonnes(100_000);
-    println!("100 000 nodes in {} ms", start.elapsed().as_millis());
-    let start = Instant::now();
-    insert_tonnes(1_000_000);
-    println!("1 000 000 nodes in {} ms", start.elapsed().as_millis());
+    let mut tree = CartesienTree::new();
+    let methode = [Interaction::Insertion, Interaction::Search, Interaction::Suppression];
+    for interaction in methode.iter() {
+        println!("{:?}", interaction);
+        let start = Instant::now();
+        insert_tonnes(&mut tree, 1000, interaction);
+        println!("1000 nodes in {} ms", start.elapsed().as_millis());
+        let start = Instant::now();
+        insert_tonnes(&mut tree, 100_000, interaction);
+        println!("100 000 nodes in {} ms", start.elapsed().as_millis());
+        let start = Instant::now();
+        insert_tonnes(&mut tree, 1_000_000, interaction);
+        println!("1 000 000 nodes in {} ms", start.elapsed().as_millis());
+    }
+    
 }
