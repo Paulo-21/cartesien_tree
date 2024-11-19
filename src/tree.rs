@@ -144,7 +144,7 @@ impl<K,P> CartesienTree<K,P> {
             }
         }
         if nn.parent.is_none() {
-            self.root = Some(n.clone());
+            self.root = Some(n);
             None
         }
         else {
@@ -157,11 +157,11 @@ impl<K,P> CartesienTree<K,P> {
                 match CartesienTree::does_im_left_child(c, test_key, test_prio) {
                     true  => {
                         insert_direction = Direction::Left;
-                        c.borrow_mut().left_child = Some(Rc::clone(&n));
+                        c.borrow_mut().left_child = Some(n);
                     },
                     false => {
                         insert_direction = Direction::Right;
-                        c.borrow_mut().right_child = Some(Rc::clone(&n));
+                        c.borrow_mut().right_child = Some(n);
                     },
                 }
             }
