@@ -120,6 +120,7 @@ impl<K,P> CartesienTree<K,P> {
             }
         }
     }
+    #[inline]
     fn rotate(&mut self, mut nn : RefMut<'_, Node<K,P>>, mut pp : RefMut<'_, Node<K,P>>, mut insert_direction :Direction, n : Rc<RefCell<Node<K,P>>>, parent :Rc<RefCell<Node<K,P>>> ) -> Option<Direction> 
     where K: PartialEq+ Copy, P : PartialEq + Copy {
         match insert_direction {
@@ -169,6 +170,7 @@ impl<K,P> CartesienTree<K,P> {
         }
 
     }
+    #[inline]
     pub fn does_im_left_child(parent : &Rc<RefCell<Node<K,P>>>, child_key : K, child_priority : P) -> bool 
     where K : PartialEq, P : PartialEq {
             if let Some(lc) = (**parent).borrow().left_child.clone() {
