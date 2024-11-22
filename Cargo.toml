@@ -12,5 +12,12 @@ panic = "abort"
 lto = true
 codegen-units = 1
 
+[profile.perf-debug]
+inherits = "release"
+debug = true
+lto = true
+strip=false
+panic = 'abort'
+
 [features]
 benchmark = ["dep:fastrand"]
