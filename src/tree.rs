@@ -149,12 +149,12 @@ impl<K,P> CartesienTree<K,P> {
             None
         }
         else {
-            let r = nn.parent.clone();
+            let r = nn.parent.as_ref();
             let test_key = pp.key;
             let test_prio = pp.priority;
             drop(pp);
-            drop(nn);
-            if let Some(c) = r.as_ref() {
+            //drop(nn);
+            if let Some(c) = r {
                 match CartesienTree::does_im_left_child(c, test_key, test_prio) {
                     true  => {
                         insert_direction = Direction::Left;
