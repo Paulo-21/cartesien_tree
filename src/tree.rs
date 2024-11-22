@@ -173,7 +173,7 @@ impl<K,P> CartesienTree<K,P> {
     #[inline]
     pub fn does_im_left_child(parent : &Rc<RefCell<Node<K,P>>>, child_key : K, child_priority : P) -> bool 
     where K : PartialEq, P : PartialEq {
-            if let Some(lc) = (**parent).borrow().left_child.clone() {
+            if let Some(lc) = parent.borrow().left_child.as_ref() {
                 let lcc = lc.borrow();
                 if lcc.priority == child_priority && lcc.key == child_key {
                     return true;
