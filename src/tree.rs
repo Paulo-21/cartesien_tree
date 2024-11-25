@@ -1,4 +1,5 @@
-use std::{collections::VecDeque, fmt::Display};
+use std::cell::RefMut;
+use std::{cell::RefCell, collections::VecDeque, fmt::Display, rc::Rc};
 use std::cmp::Ordering::*;
 
 pub enum TreeError {
@@ -21,9 +22,9 @@ impl Display for Direction {
 pub struct Node<K,P> {
     key : K,
     priority : P,
-    left_child : *mut Node<K,P>,
-    right_child : *mut Node<K,P>,
-    parent : *mut Node<K,P>,
+    left_child : Option<Rc<RefCell<Node<K,P>>>>,
+    right_child : Option<Rc<RefCell<Node<K,P>>>>,
+    parent : Option<Rc<RefCell<Node<K,P>>>>,
 }
 impl<K,P> Display for Node<K,P>
 where K: Display, P: std::fmt::Display 
@@ -34,15 +35,24 @@ where K: Display, P: std::fmt::Display
 }
 
 impl<K,P> Node<K,P> {
-    pub fn new(key : K, priority : P) -> Self {
-        Self{ key, priority, left_child: std::ptr::null_mut(), right_child: std::ptr::null_mut(), parent: std::ptr::null_mut() }
+    fn fmt_kp(node : &Option<Rc<RefCell<Node<K,P>>>>) -> String
+    where K : ToString, P : ToString {
+        if let Some(l) = node.as_ref() {
+            let mut k = (*l).borrow().key.to_string();
+            k.push_str(":");
+            k.push_str((*l).borrow().priority.to_string().as_str());
+            k
+        }else { "None".to_string() }
     }
-    pub fn newp(key : K, priority : P, parent : *mut Node<K,P>) -> Self {
-        Self{ key, priority, left_child: std::ptr::null_mut(), right_child: std::ptr::null_mut(), parent }
+    pub fn new(key : K, priority : P) -> Self {
+        Self{ key, priority, left_child: None, right_child: None, parent:None }
+    }
+    pub fn newp(key : K, priority : P, parent : Rc<RefCell<Node<K,P>>>) -> Self {
+        Self{ key, priority, left_child: None, right_child: None, parent:Some(parent) }
     }
 }
 pub struct CartesienTree<K,P> {
-    root : *mut Node<K,P>,
+    root : Option<Rc<RefCell<Node<K,P>>>>,
 }
 impl<P> CartesienTree<u32,P> {
     pub fn insert_str(&mut self, key : &str, priority : P) 
@@ -56,193 +66,194 @@ impl<P> CartesienTree<u32,P> {
     }
 }
 impl<K,P> CartesienTree<K,P> {
-    pub fn new() -> Self { Self{root : std::ptr::null_mut() } }
+    pub fn new() -> Self { Self{root : None} }
     
     pub fn insert(&mut self, key : K, priority : P)
     where K : PartialOrd + Ord + Copy, P : PartialOrd + Copy {
-        if self.is_empty() { 
-            let new_node = Box::into_raw(Box::new(Node::new(key, priority)));
-            self.root = new_node;
-            return; 
-        }
-        let mut current_node = self.root;
+        if self.is_empty() { self.root = Some(Rc::new(RefCell::new(Node::new(key, priority)))); return; }
+        let mut current_node = self.root.clone();
         let mut insert_direction = Direction::Left;//by default
-        let mut child_current = std::ptr::null_mut();
+        let mut child_current = None;
         loop {
-            if !current_node.is_null() {
-                unsafe {
-                    let nn = &mut *current_node;
-                    match key.cmp(&nn.key) {
-                        Less => {
-                            if nn.left_child.is_null() {
-                                let new_node = Box::into_raw(Box::new(Node::newp(key, priority, current_node)));
-                                child_current = new_node;
-                                nn.left_child = new_node;
-                                break;
-                            }
-                            current_node = nn.left_child;
-                        },
-                        Greater => {
-                            if nn.right_child.is_null() {
-                                let new_node = Box::into_raw(Box::new(Node::newp(key, priority, current_node)));
-                                child_current = new_node;
-                                nn.right_child = new_node;
-                                insert_direction = Direction::Right;
-                                break;
-                            }
-                            current_node = nn.right_child;
-                        },
-                        Equal => return
-                    }
+            let mut new_current = None;
+            if let Some(n) = current_node.as_ref() {
+                let mut nn = n.borrow_mut();
+                match key.cmp(&nn.key) {
+                    Less => {
+                        if nn.left_child.is_none() {
+                            let new = Rc::new(RefCell::new(Node::newp(key, priority, n.clone())));
+                            child_current = Some(new.clone());
+                            nn.left_child = Some(new);
+                            break;
+                        }
+                        new_current = nn.left_child.clone();
+                    },
+                    Greater => {
+                        if nn.right_child.is_none() {
+                            let new = Rc::new(RefCell::new(Node::newp(key, priority, n.clone())));
+                            child_current = Some(new.clone());
+                            nn.right_child = Some(new);
+                            insert_direction = Direction::Right;
+                            break;
+                        }
+                        new_current = nn.right_child.clone();
+                    },
+                    Equal => return
                 }
-            } else {
-                break;
             }
+            current_node = new_current;
         }
         current_node = child_current;
         //Rotate
-        while !current_node.is_null() {
-            unsafe {
-                let nn = &mut *current_node;
-                if !nn.parent.is_null() {
-                    let parent = nn.parent;
-                    let pp = &mut *parent;
-                    if nn.priority < pp.priority {
-                        match self.rotate(current_node, parent, insert_direction) {
-                            Some(insed) => insert_direction = insed,
-                            None => return
-                        }
-                    } else {break;}
-                } else { break; }
+        if let Some(n) = current_node.as_ref() {
+            loop {
+                let nn = n.borrow_mut();
+                    if let Some(parent) = nn.parent.clone().as_ref() {
+                        let pp = parent.borrow_mut();
+                        if nn.priority < pp.priority {
+                            match CartesienTree::rotate(self, nn, pp, insert_direction, n.clone(), parent.clone()) {
+                                Some(insed) => insert_direction = insed,
+                                None => return
+                            }
+                        } else {break;}
+                    } else { break; }      
             }
         }
     }
-
-    fn rotate(&mut self, n_ptr: *mut Node<K,P>, p_ptr: *mut Node<K,P>, mut insert_direction: Direction) -> Option<Direction>
+    #[inline]
+    fn rotate(&mut self, mut nn : RefMut<'_, Node<K,P>>, mut pp : RefMut<'_, Node<K,P>>, mut insert_direction :Direction, n : Rc<RefCell<Node<K,P>>>, parent :Rc<RefCell<Node<K,P>>> ) -> Option<Direction> 
     where K: PartialEq+ Copy, P : PartialEq + Copy {
-        unsafe {
-            let nn = &mut *n_ptr;
-            let pp = &mut *p_ptr;
-            match insert_direction {
-                Direction::Left => {
-                    nn.parent = pp.parent;
-                    pp.parent = n_ptr;
+        match insert_direction {
+            Direction::Left => {
+                nn.parent = pp.parent.take();
+                pp.parent = Some(n.clone());
 
-                    pp.left_child = nn.right_child;
-                    if !pp.left_child.is_null() { 
-                        (*pp.left_child).parent = p_ptr;
-                    }
-                    nn.right_child = p_ptr;         
-                },
-                Direction::Right => {
-                    nn.parent = pp.parent;
-                    pp.parent = n_ptr;
-                    pp.right_child = nn.left_child;
-                    if !pp.right_child.is_null() {
-                        (*pp.right_child).parent = p_ptr;
-                    }
-                    nn.left_child = p_ptr;            
+                pp.left_child = nn.right_child.take();
+                if let Some(c) = pp.left_child.as_ref() { 
+                    c.borrow_mut().parent = Some(parent.clone());
                 }
-            }
-            if nn.parent.is_null() {
-                self.root = n_ptr;
-                None
-            }
-            else {
-                let parent = nn.parent;
-                let test_key = pp.key;
-                let test_prio = pp.priority;
-                // Need to check if we are the left or right child of our new parent
-                if self.does_im_left_child(parent, test_key, test_prio) {
-                    insert_direction = Direction::Left;
-                    (*parent).left_child = n_ptr;
-                } else {
-                    insert_direction = Direction::Right;
-                    (*parent).right_child = n_ptr;
+                nn.right_child = Some(parent);         
+            },
+            Direction::Right => {
+                nn.parent = pp.parent.take();
+                pp.parent = Some(n.clone());//Change parent
+                pp.right_child = nn.left_child.take();
+                if let Some(c) = pp.right_child.as_ref() {
+                    c.borrow_mut().parent = Some(parent.clone());
                 }
-                Some(insert_direction)
+                nn.left_child = Some(parent);            
             }
         }
+        if nn.parent.is_none() {
+            self.root = Some(n);
+            None
+        }
+        else {
+            let r = nn.parent.as_ref();
+            let test_key = pp.key;
+            let test_prio = pp.priority;
+            drop(pp);
+            //drop(nn);
+            if let Some(c) = r {
+                match CartesienTree::does_im_left_child(c, test_key, test_prio) {
+                    true  => {
+                        insert_direction = Direction::Left;
+                        c.borrow_mut().left_child = Some(n);
+                    },
+                    false => {
+                        insert_direction = Direction::Right;
+                        c.borrow_mut().right_child = Some(n);
+                    },
+                }
+            }
+            Some(insert_direction)
+        }
+
     }
-    pub fn does_im_left_child(&self, parent : *mut Node<K,P>, child_key : K, child_priority : P) -> bool 
+    #[inline]
+    pub fn does_im_left_child(parent : &Rc<RefCell<Node<K,P>>>, child_key : K, child_priority : P) -> bool 
     where K : PartialEq, P : PartialEq {
-        unsafe {
-            if !(*parent).left_child.is_null() {
-                let lc = (*parent).left_child;
-                if (*lc).priority == child_priority && (*lc).key == child_key {
+            if let Some(lc) = parent.borrow().left_child.as_ref() {
+                let lcc = lc.borrow();
+                if lcc.priority == child_priority && lcc.key == child_key {
                     return true;
                 }
             }
-            false
-        }
+        false
     }
     
     pub fn remove(&mut self, key:K) -> Result<(), TreeError> 
     where K : PartialEq + Copy + Ord, P :  Copy + PartialOrd {
         let to_remove = self.bin_search(key)?;
+        
         loop {
-            unsafe {
-                if (*to_remove).left_child.is_null() && (*to_remove).right_child.is_null() {
-                    if (*to_remove).parent.is_null() {
-                        self.root = std::ptr::null_mut();
-                    } else {
-                        let parent = (*to_remove).parent;
-                        if self.does_im_left_child(parent, (*to_remove).key, (*to_remove).priority) {
-                            (*parent).left_child = std::ptr::null_mut();
-                        } else {
-                            (*parent).right_child = std::ptr::null_mut();
-                        }
+            if to_remove.borrow().left_child.is_none() && to_remove.borrow().left_child.is_none() {
+                if (*to_remove).borrow_mut().parent.is_none() {
+                    self.root = None;
+                } else {
+                    let parent = (*to_remove).borrow_mut().parent.take().unwrap();
+                    match CartesienTree::does_im_left_child(&parent, (*to_remove).borrow().key, (*to_remove).borrow().priority) {
+                        true => (*parent).borrow_mut().left_child = None,
+                        false => (*parent).borrow_mut().right_child = None,
                     }
-                    // Deallocate the node
-                    Box::from_raw(to_remove);
-                    return Ok(());
+
+                }
+                drop(to_remove);
+                return Ok(());
+            }
+            else {
+                if to_remove.borrow().left_child.is_none() {
+                    let pp = to_remove.borrow_mut();
+                    let c = pp.right_child.clone().unwrap();
+                    let nn = c.borrow_mut();
+                    let _ = self.rotate(nn, pp, Direction::Right, c.clone(), to_remove.clone());
+                }
+                else if to_remove.borrow().right_child.is_none() {
+                    let pp = to_remove.borrow_mut();
+                        let c = pp.left_child.clone().unwrap();
+                        let nn = c.borrow_mut();
+                        let _ = self.rotate(nn, pp, Direction::Left, c.clone(), to_remove.clone());
                 }
                 else {
-                    if (*to_remove).left_child.is_null() {
-                        let c = (*to_remove).right_child;
-                        let insert_direction = Direction::Right;
-                        self.rotate(c, to_remove, insert_direction);
-                    }
-                    else if (*to_remove).right_child.is_null() {
-                        let c = (*to_remove).left_child;
-                        let insert_direction = Direction::Left;
-                        self.rotate(c, to_remove, insert_direction);
-                    }
-                    else {
-                        let pl = (*(*to_remove).left_child).priority;
-                        let pr = (*(*to_remove).right_child).priority;
-                        if pl <= pr {
-                            let c = (*to_remove).left_child;
-                            let insert_direction = Direction::Left;
-                            self.rotate(c, to_remove, insert_direction);
-                        } else {
-                            let c = (*to_remove).right_child;
-                            let insert_direction = Direction::Right;
-                            self.rotate(c, to_remove, insert_direction);
+                    let to_remove_ref = to_remove.borrow_mut();
+                    if let Some(leftc) = to_remove_ref.left_child.as_ref() {
+                        if let Some(rightc) = to_remove_ref.right_child.as_ref() {
+                            let pl = leftc.borrow().priority;
+                            let pr = rightc.borrow().priority;
+                            if pl <= pr {
+                                let pp = to_remove_ref;
+                                let c = pp.left_child.clone().unwrap();
+                                let nn = c.borrow_mut();
+                                let _ = self.rotate(nn, pp, Direction::Left, c.clone(), to_remove.clone());
+                            } else {
+                                let pp = to_remove_ref;
+                                let c = pp.right_child.clone().unwrap();
+                                let nn = c.borrow_mut();
+                                let _ = self.rotate(nn, pp, Direction::Right, c.clone(), to_remove.clone());
+                            }
                         }
-                    }
+                    }                    
                 }
+                
             }
         }
     }
     pub fn print_bfs(&self)
     where K : Display, P : Display {
+        //println!("-------------------BFS----------------");
         let mut file = VecDeque::new();
-        file.push_back((self.root, 0, Direction::Left));
+        file.push_back((self.root.clone(), 0, Direction::Left));
         let mut current_level = -1;
-        while let Some((node_ptr, level, dir)) = file.pop_front() {
-            if !node_ptr.is_null() {
-                unsafe {
-                    let r = &*node_ptr;
-                    if current_level < level {
-                        current_level = level;
-                        println!();
-                        print!("Level : {} |", level);
-                    }
-                    print!("{} {} | ", r, dir);                
-                    file.push_back((r.left_child, current_level+1, Direction::Left));
-                    file.push_back((r.right_child, current_level+1, Direction::Right));
+        while let Some(next) = file.pop_front() {
+            if let Some(r) = next.0 {
+                if current_level < next.1 {
+                    current_level = next.1;
+                    println!();
+                    print!("Level : {} |", next.1);
                 }
+                print!("{} {} | ", r.borrow(), next.2);                
+                file.push_back(((*r).borrow().left_child.clone(), current_level+1, Direction::Left));
+                file.push_back(((*r).borrow().right_child.clone(), current_level+1, Direction::Right));
             }
         }
         println!();
@@ -251,58 +262,39 @@ impl<K,P> CartesienTree<K,P> {
     pub fn bfs(&self) -> Vec<K> where K : Clone + Copy {
         let mut seq = Vec::new();
         let mut file = VecDeque::new();
-        file.push_back(self.root);
-        while let Some(node_ptr) = file.pop_front() {
-            if !node_ptr.is_null() {
-                unsafe {
-                    let r = &*node_ptr;            
-                    seq.push(r.key);
-                    file.push_back(r.left_child);
-                    file.push_back(r.right_child);
-                }
+        file.push_back(self.root.clone());
+        while let Some(next) = file.pop_front() {
+            if let Some(r) = next.as_ref() {              
+                seq.push(r.borrow().key);
+                file.push_back(r.borrow().left_child.clone());
+                file.push_back(r.borrow().right_child.clone());
             }
         }
         seq
     }
 
-    pub fn is_empty(&self) -> bool { self.root.is_null() }
+    pub fn is_empty(&self) -> bool { self.root.is_none() }
 
-    pub fn bin_search(&self, key : K) -> Result<*mut Node<K,P>, TreeError>
+    pub fn bin_search(&self, key : K) -> Result<Rc<RefCell<Node<K,P>>>, TreeError>
     where K : Ord
     {
         if self.is_empty() { return Err(TreeError::ElementNotFind); }
-        let mut current_node = self.root;
+        let mut current_node = self.root.clone();
         loop {
-            if !current_node.is_null() {
-                unsafe {
-                    let n = &*current_node;
-                    match key.cmp(&n.key) {
-                        Less => current_node = n.left_child,
-                        Greater => current_node = n.right_child,
-                        Equal => return Ok(current_node),
+            match current_node {
+                Some(n) => {
+                    match key.cmp(&n.borrow().key) {
+                        Less => current_node = n.borrow().left_child.clone(),
+                        Greater => current_node = n.borrow().right_child.clone(),
+                        Equal => return Ok(n.clone()),
                     }
-                }
-            } else { return Err(TreeError::ElementNotFind); }
+                },
+                None => { return Err(TreeError::ElementNotFind); }
+            }
         }
     }
 }
 
-impl<K,P> Drop for CartesienTree<K,P> {
-    fn drop(&mut self) {
-        unsafe fn drop_node<K,P>(node: *mut Node<K,P>) {
-            if !node.is_null() {
-                let n = &mut *node;
-                drop_node(n.left_child);
-                drop_node(n.right_child);
-                // Deallocate the node
-                Box::from_raw(node);
-            }
-        }
-        unsafe {
-            drop_node(self.root);
-        }
-    }
-}
 
 #[cfg(test)]
 mod tests {
