@@ -39,7 +39,7 @@ impl<K,P> Node<K,P> {
     where K : ToString, P : ToString {
         if let Some(l) = node.as_ref() {
             let mut k = (*l).borrow().key.to_string();
-            k.push_str(":");
+            k.push(':');
             k.push_str((*l).borrow().priority.to_string().as_str());
             k
         }else { "None".to_string() }
