@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-mimalloc = { version = "*" }
+#mimalloc = { version = "*" }
 fastrand ={ version = "2", optional = true}
 
 [profile.release]
