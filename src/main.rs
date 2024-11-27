@@ -24,39 +24,57 @@ fn main() {
 
 #[cfg(feature = "benchmark")]
 fn main() {
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub enum Interaction {
         Insertion, Suppression, Search
     }
     use fastrand::Rng;
     use std::time::Instant;
-    pub fn insert_tonnes(tree : &mut CartesienTree<u32,u32>, n : u32, interac : &Interaction) {
+    fn bench_insert(n : u32) -> CartesienTree<u32,u32> {
+        let start = Instant::now();
+        let mut tree = CartesienTree::new();
         let mut rng = Rng::new();
-        
         for _ in 0..n {
-            let k: u32 = rng.u32(..);
-            let p: u32 = rng.u32(..);
-            match *interac {
-                Interaction::Insertion => tree.insert(k, p),
-                Interaction::Search => _ = tree.bin_search(k),
-                Interaction::Suppression => tree.insert(k, p),
-            }
-            
+            let k = rng.u32(..);
+            let p = rng.u32(..);
+            tree.insert(k, p);
         }
+        println!("{n} nodes in {} msec", start.elapsed().as_millis());
+        tree
     }
-    let mut tree = CartesienTree::new();
+    fn bench_search(tree : &mut CartesienTree<u32,u32>, n : u32) {
+        let mut rng = Rng::new();
+        let start = Instant::now();
+        for _ in 0..n {
+            let k = rng.u32(..);
+            let _ = tree.bin_search(k);
+        }
+        println!("{n} nodes in {} msec", start.elapsed().as_millis());
+    }
+    fn bench_remove(tree : &mut CartesienTree<u32,u32>, n : u32) {
+        let mut rng = Rng::new();
+        let start = Instant::now();
+        for _ in 0..n {
+            let k = rng.u32(..);
+            let _ = tree.remove(k);
+        }
+        println!("{n} nodes in {} msec", start.elapsed().as_millis());
+    }
     let methode = [Interaction::Insertion, Interaction::Search, Interaction::Suppression];
+    let nb_noeuds = [1000, 100_000, 1_000_000];
+    let mut abr: Vec<CartesienTree<u32, u32>> = Vec::with_capacity(nb_noeuds.len());
     for interaction in methode.iter() {
         println!("{:?}", interaction);
-        let start = Instant::now();
-        insert_tonnes(&mut tree, 1000, interaction);
-        println!("1000 nodes in {} ms", start.elapsed().as_millis());
-        let start = Instant::now();
-        insert_tonnes(&mut tree, 100_000, interaction);
-        println!("100 000 nodes in {} ms", start.elapsed().as_millis());
-        let start = Instant::now();
-        insert_tonnes(&mut tree, 1_000_000, interaction);
-        println!("1 000 000 nodes in {} ms", start.elapsed().as_millis());
+        for (i, n) in nb_noeuds.iter().enumerate() {
+            let a = match *interaction {
+                Interaction::Insertion => Some(bench_insert(*n)),
+                Interaction::Search => { bench_search(&mut abr[i], *n); None},
+                Interaction::Suppression => { bench_remove(&mut abr[i], *n); None},
+            };
+            if let Some(arbre) = a {
+                abr.push(arbre);
+            }
+        }
     }
     
 }

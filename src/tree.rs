@@ -227,6 +227,7 @@ impl<K,P> CartesienTree<K,P> {
                     let parent = rm.parent.take().unwrap();
                     let fils = rm.right_child.take().unwrap();
                     fils.borrow_mut().parent = Some(parent.clone());
+                    drop(rm);
                     match CartesienTree::does_im_left_child(&parent, (*to_remove).borrow().key, (*to_remove).borrow().priority) {
                         true => (*parent).borrow_mut().left_child = Some(fils),
                         false => (*parent).borrow_mut().right_child = Some(fils),
@@ -243,6 +244,7 @@ impl<K,P> CartesienTree<K,P> {
                     let parent = rm.parent.take().unwrap();
                     let fils = rm.left_child.take().unwrap();
                     fils.borrow_mut().parent = Some(parent.clone());
+                    drop(rm);
                     match CartesienTree::does_im_left_child(&parent, (*to_remove).borrow().key, (*to_remove).borrow().priority) {
                         true => (*parent).borrow_mut().left_child = Some(fils),
                         false => (*parent).borrow_mut().right_child = Some(fils),
@@ -315,7 +317,7 @@ impl<K,P> CartesienTree<K,P> {
 mod tests {
     use super::*;
     #[test]
-    fn tree1() {
+    fn insertion1() {
         let noeuds = [('A', 5),('B', 3),('C', 8),('D', 2),('E', 6),('F', 7),('G', 9),('H', 1),('I', 10),('J', 12)];
         let mut tree = CartesienTree::<u32,u32>::new();
         noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
@@ -323,7 +325,7 @@ mod tests {
         assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
     }
     #[test]
-    fn tree2() {
+    fn insertion2() {
         let noeuds = [('H', 1),('G', 9),('A', 5),('B', 3),('D', 2),('F', 7),('C', 8),('J', 12),('I', 10),('E', 6)];
         let mut tree = CartesienTree::<u32,u32>::new();
         noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
@@ -331,10 +333,36 @@ mod tests {
         assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
     }
     #[test]
-    fn tree3() {
+    fn insertion3() {
         let noeuds = [('E', 6),('H', 1),('B', 3),('D', 2),('C', 8),('F', 7),('G', 9),('J', 12),('A', 5),('I', 10)];
         let mut tree = CartesienTree::<u32,u32>::new();
         noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
+        let seq = tree.bfs();
+        assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
+    }
+    #[test]
+    fn remove1() {
+        let noeuds = [('E', 6),('H', 1),('B', 3),('D', 2),('C', 8),('F', 7),('G', 9),('J', 12),('A', 5),('I', 10)];
+        let mut tree = CartesienTree::<u32,u32>::new();
+        noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
+        let seq = tree.bfs();
+        assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
+    }
+    #[test]
+    fn remove2() {
+        let noeuds = [('E', 6),('H', 1),('B', 3),('D', 2),('C', 8),('F', 7),('G', 9),('J', 12),('A', 5),('I', 10)];
+        let mut tree = CartesienTree::<u32,u32>::new();
+        noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
+        let seq = tree.bfs();
+        assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
+    }
+    #[test]
+    fn remove3() {
+        let to_delete = ('A',5);
+        let noeuds = [('E', 6),('H', 1),('B', 3),('D', 2),('C', 8),('F', 7),('G', 9),('J', 12),('A', 5),('I', 10)];
+        let mut tree = CartesienTree::<u32,u32>::new();
+        noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
+        //tree.remove(to_delete.0);
         let seq = tree.bfs();
         assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
     }
