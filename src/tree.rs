@@ -55,14 +55,23 @@ pub struct CartesienTree<K,P> {
     root : Option<Rc<RefCell<Node<K,P>>>>,
 }
 impl<P> CartesienTree<u32,P> {
+    pub fn insert_char(&mut self, key : char, priority : P)
+    where P : PartialOrd + Copy {
+        self.insert(key.to_ascii_lowercase() as u32 - 97, priority);
+    }
     pub fn insert_str(&mut self, key : &str, priority : P) 
     where P : PartialOrd + Copy {
         let keyn: u32= key.chars().fold(0, |acc , x|26*(acc+x as u32));
         self.insert(keyn, priority);
     }
-    pub fn insert_char(&mut self, key : char, priority : P)
+    pub fn remove_char(&mut self, key : char)
     where P : PartialOrd + Copy {
-        self.insert(key.to_ascii_lowercase() as u32 - 97, priority);
+        self.remove(key.to_ascii_lowercase() as u32 - 97);
+    }
+    pub fn remove_str(&mut self, key : &str)
+    where P : PartialOrd + Copy {
+        let keyn: u32= key.chars().fold(0, |acc , x|26*(acc+x as u32));
+        self.remove(keyn);
     }
 }
 impl<K,P> CartesienTree<K,P> {
@@ -344,7 +353,7 @@ mod tests {
     fn remove1() {
         let noeuds = [('E', 6),('H', 1),('B', 3),('D', 2),('C', 8),('F', 7),('G', 9),('J', 12),('A', 5),('I', 10)];
         let mut tree = CartesienTree::<u32,u32>::new();
-        noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
+        noeuds.iter().for_each(|(k,p) | tree.remove_char(*k));
         let seq = tree.bfs();
         assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
     }
@@ -352,7 +361,7 @@ mod tests {
     fn remove2() {
         let noeuds = [('E', 6),('H', 1),('B', 3),('D', 2),('C', 8),('F', 7),('G', 9),('J', 12),('A', 5),('I', 10)];
         let mut tree = CartesienTree::<u32,u32>::new();
-        noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
+        noeuds.iter().for_each(|(k,p) | tree.remove_char(*k));
         let seq = tree.bfs();
         assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
     }
@@ -361,7 +370,7 @@ mod tests {
         let to_delete = ('A',5);
         let noeuds = [('E', 6),('H', 1),('B', 3),('D', 2),('C', 8),('F', 7),('G', 9),('J', 12),('A', 5),('I', 10)];
         let mut tree = CartesienTree::<u32,u32>::new();
-        noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
+        noeuds.iter().for_each(|(k,p) | tree.remove_char(*k));
         //tree.remove(to_delete.0);
         let seq = tree.bfs();
         assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
