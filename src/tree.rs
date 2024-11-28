@@ -298,6 +298,19 @@ impl<K,P> CartesienTree<K,P> {
         }
         seq
     }
+    pub fn dfs(&self) -> Vec<K> where K : Clone + Copy {
+        let mut seq = Vec::new();
+        let mut file = VecDeque::new();
+        file.push_back(self.root.clone());
+        while let Some(next) = file.pop_back() {
+            if let Some(r) = next.as_ref() {              
+                seq.push(r.borrow().key);
+                file.push_back(r.borrow().right_child.clone());
+                file.push_back(r.borrow().left_child.clone());
+            }
+        }
+        seq
+    }
 
     pub fn is_empty(&self) -> bool { self.root.is_none() }
 
@@ -331,7 +344,9 @@ mod tests {
         let mut tree = CartesienTree::<u32,u32>::new();
         noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
         let seq = tree.bfs();
+        let seq_dfs = tree.dfs();
         assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
+        assert_eq!(seq_dfs, [7, 3, 1, 0, 2, 4, 5, 6, 8, 9]);
     }
     #[test]
     fn insertion2() {
@@ -339,7 +354,9 @@ mod tests {
         let mut tree = CartesienTree::<u32,u32>::new();
         noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
         let seq = tree.bfs();
+        let seq_dfs = tree.dfs();
         assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
+        assert_eq!(seq_dfs, [7, 3, 1, 0, 2, 4, 5, 6, 8, 9]);
     }
     #[test]
     fn insertion3() {
@@ -347,32 +364,44 @@ mod tests {
         let mut tree = CartesienTree::<u32,u32>::new();
         noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
         let seq = tree.bfs();
+        let seq_dfs = tree.dfs();
         assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
+        assert_eq!(seq_dfs, [7, 3, 1, 0, 2, 4, 5, 6, 8, 9]);
     }
     #[test]
     fn remove1() {
-        let noeuds = [('E', 6),('H', 1),('B', 3),('D', 2),('C', 8),('F', 7),('G', 9),('J', 12),('A', 5),('I', 10)];
+        let to_delete = [('A',5u32)];
+        let noeuds = [('A', 5),('B', 3),('C', 8),('D', 2),('E', 6),('F', 7),('G', 9),('H', 1),('I', 10),('J', 12)];
         let mut tree = CartesienTree::<u32,u32>::new();
-        noeuds.iter().for_each(|(k,p) | tree.remove_char(*k));
+        noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
+        to_delete.iter().for_each(|(k,_) | tree.remove_char(*k));
         let seq = tree.bfs();
-        assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
+        let seq_dfs = tree.dfs();
+        assert_eq!(seq, [7, 3, 8, 1, 4, 9, 2, 5, 6]);
+        assert_eq!(seq_dfs, [7, 3, 1, 2, 4, 5, 6, 8, 9]);
     }
     #[test]
     fn remove2() {
-        let noeuds = [('E', 6),('H', 1),('B', 3),('D', 2),('C', 8),('F', 7),('G', 9),('J', 12),('A', 5),('I', 10)];
+        let to_delete = [('A',5u32), ('J',12),];
+        let noeuds = [('A', 5),('B', 3),('C', 8),('D', 2),('E', 6),('F', 7),('G', 9),('H', 1),('I', 10),('J', 12)];
         let mut tree = CartesienTree::<u32,u32>::new();
-        noeuds.iter().for_each(|(k,p) | tree.remove_char(*k));
+        noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
+        to_delete.iter().for_each(|(k,_) | tree.remove_char(*k));
         let seq = tree.bfs();
-        assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
+        let seq_dfs = tree.dfs();
+        assert_eq!(seq, [7, 3, 8, 1, 4, 2, 5, 6]);
+        assert_eq!(seq_dfs, [7, 3, 1, 2, 4, 5, 6, 8]);
     }
     #[test]
     fn remove3() {
-        let to_delete = ('A',5);
-        let noeuds = [('E', 6),('H', 1),('B', 3),('D', 2),('C', 8),('F', 7),('G', 9),('J', 12),('A', 5),('I', 10)];
+        let to_delete = [('A',5u32), ('J',12), ('H', 1)];
+        let noeuds = [('A', 5),('B', 3),('C', 8),('D', 2),('E', 6),('F', 7),('G', 9),('H', 1),('I', 10),('J', 12)];
         let mut tree = CartesienTree::<u32,u32>::new();
-        noeuds.iter().for_each(|(k,p) | tree.remove_char(*k));
-        //tree.remove(to_delete.0);
+        noeuds.iter().for_each(|(k,p) | tree.insert_char(*k, *p));
+        to_delete.iter().for_each(|(k,_) | tree.remove_char(*k));
         let seq = tree.bfs();
-        assert_eq!(seq, [7, 3, 8, 1, 4, 9, 0, 2, 5, 6]);
+        let seq_dfs = tree.dfs();
+        assert_eq!(seq, [3, 1, 4, 2, 5, 6, 8]);
+        assert_eq!(seq_dfs, [3, 1, 2, 4, 5, 6, 8]);
     }
 }
