@@ -65,7 +65,7 @@ fn main() {
         println!("{n} nodes in {} msec", start.elapsed().as_millis());
     }
     let methode = [Interaction::Insertion, Interaction::Search, Interaction::Suppression];
-    let nb_noeuds = [1000, 100_000, 1_000_000, 10_000_000];
+    let nb_noeuds = [1000, 100_000, 1_000_000];//, 10_000_000];
     let mut abr: Vec<CartesienTree<u32, u32>> = Vec::with_capacity(nb_noeuds.len());
     for interaction in methode.iter() {
         println!("{:?}", interaction);

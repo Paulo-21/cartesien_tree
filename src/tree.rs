@@ -116,22 +116,26 @@ impl<K,P> CartesienTree<K,P> {
         //Rotate
         if let Some(n) = current_node.as_ref() {
             loop {
-                let nn = n.borrow_mut();
-                    if let Some(parent) = nn.parent.clone().as_ref() {
-                        let pp = parent.borrow_mut();
-                        if nn.priority < pp.priority {
-                            match CartesienTree::rotate(self, nn, pp, insert_direction, n.clone(), parent.clone()) {
-                                Some(insed) => insert_direction = insed,
-                                None => return
-                            }
-                        } else {break;}
-                    } else { break; }      
+                let nn = n.borrow();
+                if let Some(parent) = nn.parent.clone().as_ref() {
+                    let pp = parent.borrow();
+                    if nn.priority < pp.priority {
+                        drop(nn);
+                        drop(pp);
+                        match CartesienTree::rotate(self, insert_direction, n, parent) {
+                            Some(insed) => insert_direction = insed,
+                            None => return
+                        }
+                    } else {break;}
+                } else { break; }      
             }
         }
     }
     #[inline]
-    fn rotate(&mut self, mut nn : RefMut<'_, Node<K,P>>, mut pp : RefMut<'_, Node<K,P>>, mut insert_direction :Direction, n : Rc<RefCell<Node<K,P>>>, parent :Rc<RefCell<Node<K,P>>> ) -> Option<Direction> 
+    fn rotate(&mut self, mut insert_direction :Direction, n : &Rc<RefCell<Node<K,P>>>, parent :&Rc<RefCell<Node<K,P>>> ) -> Option<Direction> 
     where K: PartialEq+ Copy, P : PartialEq + Copy {
+        let mut nn = n.borrow_mut();
+        let mut pp = parent.borrow_mut();
         match insert_direction {
             Direction::Left => {
                 nn.parent = pp.parent.take();
@@ -141,7 +145,7 @@ impl<K,P> CartesienTree<K,P> {
                 if let Some(c) = pp.left_child.as_ref() { 
                     c.borrow_mut().parent = Some(parent.clone());
                 }
-                nn.right_child = Some(parent);         
+                nn.right_child = Some(parent.clone());        
             },
             Direction::Right => {
                 nn.parent = pp.parent.take();
@@ -150,11 +154,11 @@ impl<K,P> CartesienTree<K,P> {
                 if let Some(c) = pp.right_child.as_ref() {
                     c.borrow_mut().parent = Some(parent.clone());
                 }
-                nn.left_child = Some(parent);            
+                nn.left_child = Some(parent.clone());            
             }
         }
         if nn.parent.is_none() {
-            self.root = Some(n);
+            self.root = Some(n.clone());
             None
         }
         else {
@@ -167,11 +171,11 @@ impl<K,P> CartesienTree<K,P> {
                 match CartesienTree::does_im_left_child(c, test_key, test_prio) {
                     true  => {
                         insert_direction = Direction::Left;
-                        c.borrow_mut().left_child = Some(n);
+                        c.borrow_mut().left_child = Some(n.clone());
                     },
                     false => {
                         insert_direction = Direction::Right;
-                        c.borrow_mut().right_child = Some(n);
+                        c.borrow_mut().right_child = Some(n.clone());
                     },
                 }
             }
@@ -195,70 +199,66 @@ impl<K,P> CartesienTree<K,P> {
     where K : PartialEq + Copy + Ord, P :  Copy + PartialOrd {
         let to_remove = self.bin_search(key)?;
         loop {
-            if to_remove.borrow().left_child.is_some() && to_remove.borrow().right_child.is_some() {
-                let to_remove_ref = to_remove.borrow_mut();
-                if let Some(leftc) = to_remove_ref.left_child.as_ref() {
-                    if let Some(rightc) = to_remove_ref.right_child.as_ref() {
+            let mut to_rem = to_remove.borrow_mut();
+            if to_rem.left_child.is_some() && to_rem.right_child.is_some() {
+                if let Some(leftc) = to_rem.left_child.as_ref() {
+                    if let Some(rightc) = to_rem.right_child.as_ref() {
                         let pl = leftc.borrow().priority;
                         let pr = rightc.borrow().priority;
+                        drop(to_rem);
                         if pl <= pr {
-                            let pp = to_remove_ref;
-                            let c = pp.left_child.clone().unwrap();
-                            let nn = c.borrow_mut();
-                            let _ = self.rotate(nn, pp, Direction::Left, c.clone(), to_remove.clone());
+                            let _ = self.rotate( Direction::Left, leftc, &to_remove);
                         } else {
-                            let pp = to_remove_ref;
-                            let c = pp.right_child.clone().unwrap();
-                            let nn = c.borrow_mut();
-                            let _ = self.rotate(nn, pp, Direction::Right, c.clone(), to_remove.clone());
+                            let _ = self.rotate( Direction::Right, rightc, &to_remove);
                         }
                     }
                 }
             }
-            else if to_remove.borrow().left_child.is_none() && to_remove.borrow().right_child.is_none() {
-                if (*to_remove).borrow_mut().parent.is_none() {
+            else if to_rem.left_child.is_none() && to_rem.right_child.is_none() {
+                if to_rem.parent.is_none() {
                     self.root = None;
                 } else {
-                    let parent = (*to_remove).borrow_mut().parent.take().unwrap();
+                    let parent = to_rem.parent.take().unwrap();
                     match CartesienTree::does_im_left_child(&parent, (*to_remove).borrow().key, (*to_remove).borrow().priority) {
                         true => (*parent).borrow_mut().left_child = None,
                         false => (*parent).borrow_mut().right_child = None,
                     }
                 }
+                drop(to_rem);
                 drop(to_remove);
                 return Ok(());
             }
-            else if to_remove.borrow().left_child.is_none() {
-                if (*to_remove).borrow_mut().parent.is_none() {
-                    self.root = to_remove.borrow_mut().right_child.take();
+            else if to_rem.left_child.is_none() {
+                if to_rem.parent.is_none() {
+                    self.root = to_rem.right_child.take();
                 } else {
-                    let mut rm = to_remove.borrow_mut();
-                    let parent = rm.parent.take().unwrap();
-                    let fils = rm.right_child.take().unwrap();
+                    let parent = to_rem.parent.take().unwrap();
+                    let fils = to_rem.right_child.take().unwrap();
                     fils.borrow_mut().parent = Some(parent.clone());
-                    drop(rm);
-                    match CartesienTree::does_im_left_child(&parent, (*to_remove).borrow().key, (*to_remove).borrow().priority) {
+                    
+                    match CartesienTree::does_im_left_child(&parent, to_rem.key, to_rem.priority) {
                         true => (*parent).borrow_mut().left_child = Some(fils),
                         false => (*parent).borrow_mut().right_child = Some(fils),
                     }
                 }
+                drop(to_rem);
                 drop(to_remove);
                 return Ok(());  
             }
-            else if to_remove.borrow().right_child.is_none() {
-                if (*to_remove).borrow_mut().parent.is_none() {
-                    self.root = to_remove.borrow_mut().left_child.take();
+            else if to_rem.right_child.is_none() {
+                if to_rem.parent.is_none() {
+                    self.root = to_rem.left_child.take();
                 } else {
-                    let mut rm = to_remove.borrow_mut();
-                    let parent = rm.parent.take().unwrap();
-                    let fils = rm.left_child.take().unwrap();
+                    let parent = to_rem.parent.take().unwrap();
+                    let fils = to_rem.left_child.take().unwrap();
                     fils.borrow_mut().parent = Some(parent.clone());
-                    drop(rm);
-                    match CartesienTree::does_im_left_child(&parent, (*to_remove).borrow().key, (*to_remove).borrow().priority) {
+                
+                    match CartesienTree::does_im_left_child(&parent, to_rem.key, to_rem.priority) {
                         true => (*parent).borrow_mut().left_child = Some(fils),
                         false => (*parent).borrow_mut().right_child = Some(fils),
                     }
                 }
+                drop(to_rem);
                 drop(to_remove);
                 return Ok(());  
             }
