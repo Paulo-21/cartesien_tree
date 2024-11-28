@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-#mimalloc = { version = "*" }
 fastrand ={ version = "2", optional = true}
+mimalloc = { version = "*", optional = true}
 
 [profile.release]
 strip = true
@@ -22,3 +22,4 @@ panic = 'abort'
 
 [features]
 benchmark = ["dep:fastrand"]
+mimalloc = ["dep:mimalloc"]

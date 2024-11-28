@@ -1,9 +1,10 @@
 mod tree;
 use tree::CartesienTree;
-//use mimalloc::MiMalloc;
-
-//#[global_allocator]
-//static GLOBAL: MiMalloc = MiMalloc;
+#[cfg(feature = "mimalloc")]
+use mimalloc::MiMalloc;
+#[cfg(feature = "mimalloc")]
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
 
 #[cfg(not(feature = "benchmark"))]
 fn main() {
