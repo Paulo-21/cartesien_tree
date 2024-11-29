@@ -1,5 +1,7 @@
 mod tree;
-use tree::CartesienTree;
+use std::{cell::RefCell, rc::Rc};
+
+use tree::{CartesienTree, Node};
 #[cfg(feature = "mimalloc")]
 use mimalloc::MiMalloc;
 #[cfg(feature = "mimalloc")]
@@ -25,6 +27,27 @@ fn main() {
     tree.print_bfs();
 }
 
+fn manually_construte_1a() {
+    let h = Rc::new(RefCell::new(Node{key : 7, priority : 1, left_child : None, right_child:None, parent : None}));
+    let d = Rc::new(RefCell::new(Node{key : 3, priority : 2, left_child : None, right_child:None, parent : None}));
+    let b = Rc::new(RefCell::new(Node{key : 1, priority : 3, left_child : None, right_child:None, parent : None}));
+    let a = Rc::new(RefCell::new(Node{key : 0, priority : 5, left_child : None, right_child:None, parent : None}));
+    let c = Rc::new(RefCell::new(Node{key : 2, priority : 8, left_child : None, right_child:None, parent : None}));
+    let e = Rc::new(RefCell::new(Node{key : 4, priority : 6, left_child : None, right_child:None, parent : None}));
+    let f = Rc::new(RefCell::new(Node{key : 5, priority : 7, left_child : None, right_child:None, parent : None}));
+    let g = Rc::new(RefCell::new(Node{key : 6, priority : 9, left_child : None, right_child:None, parent : None}));
+    let i = Rc::new(RefCell::new(Node{key : 8, priority : 10, left_child : None, right_child:None, parent : None}));
+    let j = Rc::new(RefCell::new(Node{key : 9, priority : 12, left_child : None, right_child:None, parent : None}));
+    h.borrow_mut().left_child = Some(d.clone());
+    h.borrow_mut().right_child = Some(i.clone());
+    d.borrow_mut().left_child = Some(b.clone());
+    d.borrow_mut().right_child = Some(e.clone());
+    i.borrow_mut().right_child = Some(j.clone());
+    b.borrow_mut().left_child = Some(a.clone());
+    b.borrow_mut().right_child = Some(c.clone());
+    e.borrow_mut().right_child = Some(f.clone());
+    f.borrow_mut().right_child = Some(g.clone());
+}
 #[cfg(feature = "benchmark")]
 fn main() {
     #[derive(Debug, PartialEq)]
@@ -42,6 +65,8 @@ fn main() {
             let p = rng.u32(..);
             tree.insert(k, p);
         }
+        let stat = tree.depth_stat();
+        println!("Stat depth | mean : {:.3}, variance : {:.3}, cv : {:.3}", stat.0, stat.1, (stat.1.sqrt()/stat.0)*100.);
         println!("{n} nodes in {} msec", start.elapsed().as_millis());
         tree
     }

@@ -21,11 +21,11 @@ impl Display for Direction {
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Node<K,P> {
-    key : K,
-    priority : P,
-    left_child : Option<Rc<RefCell<Node<K,P>>>>,
-    right_child : Option<Rc<RefCell<Node<K,P>>>>,
-    parent : Option<Rc<RefCell<Node<K,P>>>>,
+    pub key : K,
+    pub priority : P,
+    pub left_child : Option<Rc<RefCell<Node<K,P>>>>,
+    pub right_child : Option<Rc<RefCell<Node<K,P>>>>,
+    pub parent : Option<Rc<RefCell<Node<K,P>>>>,
 }
 impl<K,P> Display for Node<K,P>
 where K: Display, P: std::fmt::Display 
@@ -280,6 +280,25 @@ impl<K,P> CartesienTree<K,P> {
                 return Ok(());  
             }
         }
+    }
+    pub fn depth_stat(&self) -> (f64, f64) {
+        let mut profondeur = Vec::new();
+        let mut file = VecDeque::new();
+        file.push_back((self.root.clone(), 0));
+        let mut current_level = -1;
+        while let Some(next) = file.pop_front() {
+            if let Some(r) = next.0 {
+                profondeur.push(current_level);
+                if current_level < next.1 {
+                    current_level = next.1;
+                }
+                file.push_back((r.borrow().left_child.clone(), current_level+1));
+                file.push_back((r.borrow().right_child.clone(), current_level+1));
+            }
+        }
+        let mean: f64 = profondeur.iter().fold(0, |acc, x| acc + x) as f64 / (profondeur.len() as f64);
+        let variance = profondeur.iter().fold(0., |acc, x| acc + ((*x as f64) - mean).powi(2)) / (profondeur.len() as f64);
+        (mean, variance)
     }
     pub fn print_bfs(&self)
     where K : Display, P : Display {
