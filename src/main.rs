@@ -23,8 +23,6 @@ fn main() {
     tree.print_bfs();
     tree.insert(93, 1);
     tree.print_bfs();
-    let _ = tree.remove(50);
-    tree.print_bfs();
 }
 
 #[cfg(feature = "benchmark")]

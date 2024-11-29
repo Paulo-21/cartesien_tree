@@ -4,6 +4,7 @@ use std::cmp::Ordering::*;
 
 pub enum TreeError {
     ElementNotFind,
+    NotExist
 }
 #[derive(Clone, Copy)]
 enum Direction { 
@@ -66,16 +67,32 @@ impl<P> CartesienTree<u32,P> {
     }
     pub fn remove_char(&mut self, key : char)
     where P : PartialOrd + Copy {
-        self.remove(key.to_ascii_lowercase() as u32 - 97);
+        _ = self.remove(key.to_ascii_lowercase() as u32 - 97);
     }
     pub fn remove_str(&mut self, key : &str)
     where P : PartialOrd + Copy {
         let keyn: u32= key.chars().fold(0, |acc , x|26*(acc+x as u32));
-        self.remove(keyn);
+        _ = self.remove(keyn);
     }
 }
 impl<K,P> CartesienTree<K,P> {
     pub fn new() -> Self { Self{root : None} }
+    pub fn get_left_child(&self, k : K) -> Result<Rc<RefCell<Node<K,P>>>, TreeError> 
+    where K : Ord {
+        let noeud = self.bin_search(k)?;
+        if let Some(c) = noeud.borrow().left_child.as_ref() {
+            return Ok(c.clone());
+        }
+        Err(TreeError::NotExist)
+    }
+    pub fn get_right_child(&self, k : K) -> Result<Rc<RefCell<Node<K,P>>>, TreeError> 
+    where K : Ord {
+        let noeud = self.bin_search(k)?;
+        if let Some(c) = noeud.borrow().left_child.as_ref() {
+            return Ok(c.clone());
+        }
+        Err(TreeError::NotExist)
+    }
     
     pub fn insert(&mut self, key : K, priority : P)
     where K : PartialOrd + Ord + Copy, P : PartialOrd + Copy {
