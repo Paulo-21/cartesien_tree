@@ -281,11 +281,11 @@ impl<K,P> CartesienTree<K,P> {
             }
         }
     }
-    pub fn depth_stat(&self) -> (f64, f64) {
+    pub fn depth_stat(&self) -> (f32, f32) {
         let mut profondeur = Vec::new();
         let mut file = VecDeque::new();
         file.push_back((self.root.clone(), 0));
-        let mut current_level = -1;
+        let mut current_level : i32 = -1;
         while let Some(next) = file.pop_front() {
             if let Some(r) = next.0 {
                 profondeur.push(current_level);
@@ -296,8 +296,8 @@ impl<K,P> CartesienTree<K,P> {
                 file.push_back((r.borrow().right_child.clone(), current_level+1));
             }
         }
-        let mean: f64 = profondeur.iter().fold(0, |acc, x| acc + x) as f64 / (profondeur.len() as f64);
-        let variance = profondeur.iter().fold(0., |acc, x| acc + ((*x as f64) - mean).powi(2)) / (profondeur.len() as f64);
+        let mean    : f32 = profondeur.iter().sum::<i32>() as f32 / (profondeur.len() as f32);
+        let variance = profondeur.iter().fold(0., |acc, x| acc + ((*x as f32) - mean).powi(2)) / (profondeur.len() as f32);
         (mean, variance)
     }
     pub fn print_bfs(&self)
